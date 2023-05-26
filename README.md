@@ -27,7 +27,7 @@ Then install the `levintreesearch_cm` package and all
 its dependencies (all are Apache2 or Apache2/MIT licensed):
 
 ```shell
-raco pkg install --auto --update-deps https://github.com/deepmind/levintreesearch_cm
+raco pkg install --auto --update-deps https://github.com/deepmind/levintreesearch_cm.git
 ```
 
 ## Quick start
@@ -49,7 +49,7 @@ This
 
 ## Quick start 2: Server example
 
-The previous example uses only one CPU core.
+The previous example uses only one CPU.
 Here's an example that runs several jobs in parallel using a server-worker
 architecture on a set of easy Sliding Tile Puzzle instances:
 
@@ -67,7 +67,7 @@ This can be changed with the flag `--log-base-dir <dir>`.
 
 By default, the number of workers is the number of cpus/2 (since often there 
 are only half as many cpu cores as there are cpu threads). This can be changed
-with `--n-workers`.
+with `--n-workers` for search, and `--n-futures` for optimization.
 
 Use the `--help` flag for more information.
 
@@ -76,8 +76,8 @@ Use the `--help` flag for more information.
 NOTICE: Currently, reproducing the paper's results requires up to 2GB 
 of RAM per worker, and up to 5GB of free disk space per experiment.
 
-By order of total computation time, here are all the commands to reproduce 
-the results of the paper (possibly with some small differences):
+By increasing order of total computation time, here are all the commands to 
+reproduce the results of the paper (possibly with some small differences):
 
 ```shell
 racket -l- lts-cm/domains/witness/server
@@ -90,6 +90,9 @@ racket -l- lts-cm/domains/rubiks-cube/server
 The first three commands take less than 2 hours each to complete on a 64-core 
 at 2GHz machine, while the last one takes several days in total (but just a few 
 hours to obtain a first decent policy).
+
+Note that the results may vary slightly depending on the value passed to
+`--n-futures`.
 
 ## Dependencies
 
@@ -112,9 +115,7 @@ The included Rubik's cube datasets are new.
 
 ```
 @inproceedings{orseau2023lts_cm,
-  author    = {Laurent Orseau and
-               Marcus Hutter and
-               Levi H.S. Lelis},
+  author    = {Laurent Orseau and Marcus Hutter and Levi H.S. Lelis},
   title     = {Levin Tree Search with Context Models},
   booktitle = {Proceedings of the Thirty-Second International 
                Joint Conference on Artificial Intelligence},
