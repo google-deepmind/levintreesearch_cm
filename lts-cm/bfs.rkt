@@ -160,9 +160,18 @@ limitations under the License.|#
       (get-contexts/setter root-state root (λ _ (++ n)))
       (make-fxvector n)))
 
-  (define (get-contexts domain-state nd)
-    (get-contexts/setter domain-state nd (make-fxvector-setter ctxs))
-    ctxs)
+  (define get-contexts
+    (if (CDB-ctx.idx-vec cdb)
+        (λ (domain-state nd)
+          (get-contexts/setter domain-state nd (make-fxvector-setter ctxs))
+          ctxs)
+        ;; There is no parameter matrix βmatrix, so for efficiency we can
+        ;; skip obtain the contexts. This can be significantly faster on
+        ;; the first iteration.
+        (λ (domain-state nd)
+          ;; The contents of ctxs does not matter since get-pconds will
+          ;; return the uniform vector anyway.
+          ctxs)))
 
   (define visited (visitor-make-hash))
 
@@ -234,11 +243,11 @@ limitations under the License.|#
             (loop)] ; skip
            [else
             ;; expand state to get children.
-            (define ctxs             (get-contexts domain-state nd))
-            (define pconds           (get-pconds ctxs ε-mix))
-            (define parent-ln1/π     (bfs-node-ln1/π     nd))
-            (define parent-depth     (bfs-node-depth     nd))
-            (define parent-act-seq   (bfs-node-act-seq   nd))
+            (define ctxs           (get-contexts domain-state nd))
+            (define pconds         (get-pconds ctxs ε-mix))
+            (define parent-ln1/π   (bfs-node-ln1/π     nd))
+            (define parent-depth   (bfs-node-depth     nd))
+            (define parent-act-seq (bfs-node-act-seq   nd))
             ;; Note: invalid actions are not removed, and so
             ;; the action probabilities are *not* renormalized accordingly.
             ;; That is, the policy should learn to assign 0 probability to invalid actions.
