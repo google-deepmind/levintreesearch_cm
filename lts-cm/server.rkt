@@ -182,7 +182,7 @@ limitations under the License.|#
                            (+= solved-expansions this-expansions)]
                           [else
                            (error "Unknown search status" search-status result)])])))
-  (kill-thread mem-thread)
+  (when mem-thread (kill-thread mem-thread))
   ;; (We could group the write operations, but it's not worth it given the small amount overall)
   (register! 'stop-solver (current-seconds))
   ;; NOTICE: n-solved is the number of problems solved in the *latest* iteration,
@@ -215,23 +215,23 @@ limitations under the License.|#
 ;======================;
 
 (define (start-memory-guard-thread sched register!)
-  (when (file-exists? "/proc/meminfo") ; unix/linux only
-    (thread
-     (λ ()
-       (let loop ()
-         (sleep 10)
-         (match (string-split (file->string "/proc/meminfo"))
-           [(list-rest "MemTotal:" totalkB "kB"
-                       "MemFree:" freekB "kB"
-                       "MemAvailable:" availkB "kB"
-                       _rst)
-            (when (< (string->number availkB) (* .05 (string->number totalkB)))
-              (register! 'status 'out-of-memory)
-              (eprintf "OUT OF MEMORY")
-              (exit))]
-           [else
-            (eprintf "Warning: cannot read or parse /proc/meminfo")])
-         (loop))))))
+  (and (file-exists? "/proc/meminfo") ; unix/linux only
+       (thread
+        (λ ()
+          (let loop ()
+            (sleep 10)
+            (match (string-split (file->string "/proc/meminfo"))
+              [(list-rest "MemTotal:" totalkB "kB"
+                          "MemFree:" freekB "kB"
+                          "MemAvailable:" availkB "kB"
+                          _rst)
+               (when (< (string->number availkB) (* .05 (string->number totalkB)))
+                 (register! 'status 'out-of-memory)
+                 (eprintf "OUT OF MEMORY")
+                 (exit))]
+              [else
+               (eprintf "Warning: cannot read or parse /proc/meminfo")])
+            (loop))))))
 
 ;============;
 ;=== Main ===;
