@@ -347,7 +347,7 @@ limitations under the License.|#
     ;; it can be that the found trajectories are different (refactoring),
     ;; and thus optimization may still be necessary.
     (when (and optimize? (> n-solved 0))
-      (printf "\n** Starting optimizer. n-proc-futures=~a\n" (*n-futures*))
+      (printf "\n** Starting optimizer. n-futures=~a\n" (*n-futures*))
       (define optim-register (make-register))
       (timev "\nOptimizer: " #:disp? #t
              (optimize log-dir optim-register #:reg (*regularizer*) #:n-actions n-actions)))
