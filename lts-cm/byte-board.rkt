@@ -43,8 +43,8 @@ limitations under the License.|#
 (define-syntax-rule (board-index aboard row col)
   (fx+ (fx* row (board-n-cols aboard)) col))
 
-(define (make-board n-rows n-cols val)
-  (board (make-bytes (* n-rows n-cols) val) n-rows n-cols))
+(define (make-board #:? [constructor board] n-rows n-cols val . other-args)
+  (apply constructor (make-bytes (* n-rows n-cols) val) n-rows n-cols other-args))
 
 (define (board-copy brd)
   (board (bytes-copy (board-vec brd)) (board-n-rows brd) (board-n-cols brd)))

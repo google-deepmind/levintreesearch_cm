@@ -245,9 +245,6 @@ limitations under the License.|#
   (define other-cmd-args
     (globals->command-line #:mutex-groups (list (list *init-cdb* *test-cdb*))))
 
-  (define init-cdb (or (*init-cdb*)
-                       (*test-cdb*)))
-
   (define log-dir (build-path-string log-base-dir (date-iso-file)))
   (printf "log-dir: ~a\n" log-dir)
 
@@ -266,7 +263,7 @@ limitations under the License.|#
            (define f (build-path-string log-dir cdb-file-name))
            (make-parent-directory* f)
            (cond [(*init-cdb*)
-                  (copy-file init-cdb f)]
+                  (copy-file (*init-cdb*) f)]
                  [else
                   ;; Create an empty cdb
                   (save-cdb (make-cdb n-actions) f)])
