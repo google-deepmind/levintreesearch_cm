@@ -13,16 +13,19 @@ First, install the [**Racket**](https://racket-lang.org/) programming language
 Racket version *8.9.0.4* or later is required, and at the time of writing
 the latest *stable* version is only 8.9, 
 so a [snapshot](https://users.cs.utah.edu/plt/snapshots/) build is required —
-pick the *shortest name*
-in the `Racket` section that fits your machine.
+if in doubt, pick the *shortest name* in the `Racket` section that fits your
+machine.
 
-Note for Linux users: Do read the comments on the main download page. A full
-unix-like distribution is recommended, so as to have `racket` in your path.
+*Note for Linux users:*
+Run `sudo sh racket-….sh` then reply `y` to the first question (unix-like 
+distribution) then press Enter for all subsequent questions.
 
-You may need to
+*Note for Windows Windows and MacOS users:*
 [configure the PATH environment variable](https://github.com/racket/racket/wiki/Configure-Command-Line-for-Racket)
 to include the directory containing the `racket` and `raco` executables.
-Type `racket -v` to check the version number.
+
+On the command line, enter `racket -v` to check that version number is at least
+8.9.0.4.
 
 Then install the `levintreesearch_cm` package and all
 its dependencies (all are Apache2 or Apache2/MIT licensed):
