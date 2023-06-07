@@ -34,6 +34,7 @@ limitations under the License.|#
          define2)
 
 (provide server-main
+         start-memory-guard-thread
          *init-cdb*
          *test-cdb*
          *problems*
@@ -113,9 +114,11 @@ limitations under the License.|#
 
   (define sched (make-scheduler make-solver-worker))
 
-  ;; Regularly check for free RAM and kill everything when less than 5% remains.
+  ;; Regularly check for free RAM and kill everything when less than X% remains.
   ;; Workers will be killed due to input port being close.
-  (define mem-thread (start-memory-guard-thread sched register!))
+  (define mem-thread (start-memory-guard-thread #:on-OOM (λ ()
+                                                           (register! 'status 'out-of-memory)
+                                                           (exit))))
 
   (for ([task (in-list tasks)])
     (scheduler-add-job! sched  #:data (cons (cons 'budget budget) task)))
@@ -214,21 +217,23 @@ limitations under the License.|#
 ;=== Some utilities ===;
 ;======================;
 
-(define (start-memory-guard-thread sched register!)
+(define (start-memory-guard-thread #:? [on-OOM (λ ()
+                                                 (eprintf "OUT OF MEMORY")
+                                                 (exit))]
+                                   #:? [OOM-ratio 0.05]
+                                   #:? [wait-seconds 10]) ; wait between each query
   (and (file-exists? "/proc/meminfo") ; unix/linux only
        (thread
         (λ ()
           (let loop ()
-            (sleep 10)
+            (sleep wait-seconds) ; every 10 seconds
             (match (string-split (file->string "/proc/meminfo"))
               [(list-rest "MemTotal:" totalkB "kB"
                           "MemFree:" freekB "kB"
                           "MemAvailable:" availkB "kB"
                           _rst)
-               (when (< (string->number availkB) (* .05 (string->number totalkB)))
-                 (register! 'status 'out-of-memory)
-                 (eprintf "OUT OF MEMORY")
-                 (exit))]
+               (when (< (string->number availkB) (* OOM-ratio (string->number totalkB)))
+                 (on-OOM))]
               [else
                (eprintf "Warning: cannot read or parse /proc/meminfo")])
             (loop))))))
