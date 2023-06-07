@@ -17,8 +17,10 @@ if in doubt, pick the *shortest name* in the `Racket` section that fits your
 machine.
 
 *Note for Linux users:*
-Run `sudo sh racket-….sh` then reply `y` to the first question (unix-like 
-distribution) then press Enter for all subsequent questions.
+Right click then `Save as...` and save the file in your `Downloads` folder.
+Then in a terminal, do `cd Downloads` then `sudo sh racket-….sh` then reply `y`
+to the first question (unix-like distribution) then press Enter for all
+subsequent questions.
 
 *Note for Windows Windows and MacOS users:*
 [configure the PATH environment variable](https://github.com/racket/racket/wiki/Configure-Command-Line-for-Racket)
@@ -103,8 +105,8 @@ Note that the results may vary slightly depending on the value passed to
 `levintreesearch_cm` requires Racket version *8.9.0.4* or later
 (Apache 2.0/MIT), and depends on a few libraries that are licensed with 
 Apache-2.0/MIT.
-These dependencies are semi-automatically when following the installation
-instructions.
+These dependencies are installed semi-automatically when following the
+installation instructions.
 
 ## Datasets
 
