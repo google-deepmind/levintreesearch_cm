@@ -6,6 +6,8 @@ Code for the paper "Levin Tree Search with Context Models" (IJCAI 2023,
 This code allows to reproduce the results of the paper. 
 Please report any issue, or contact lorseau@google.com if you need help.
 
+![The 4 domains considered in the paper: Sokoban, Sliding Tile Puzzle, The Witness, Rubik's Cube](img/domains.png)
+
 ## Installation
 
 First, install the [**Racket**](https://racket-lang.org/) programming language

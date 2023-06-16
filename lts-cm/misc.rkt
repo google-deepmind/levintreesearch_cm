@@ -39,7 +39,7 @@ limitations under the License.|#
     [(_ expr:expr ctx:expr ...)
      (syntax/loc #'expr
        (unless expr
-         (eprintf "Assertion failed: ~v" 'expr)
+         (eprintf "Assertion failed: ~v\n" 'expr)
          (pretty-write (ids->assoc ctx ...))
          (error "Assertion failed.")))]))
 
