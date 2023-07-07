@@ -1,9 +1,12 @@
 # Levin Tree Search with Context Models
 
-Code for the paper "Levin Tree Search with Context Models" (IJCAI 2023).
+Code for the paper "Levin Tree Search with Context Models" (IJCAI 2023, 
+[extended version](https://arxiv.org/abs/2305.16945)).
 
 This code allows to reproduce the results of the paper. 
 Please report any issue, or contact lorseau@google.com if you need help.
+
+![The 4 domains considered in the paper: Sokoban, Sliding Tile Puzzle, The Witness, Rubik's Cube](lts-cm/img/domains.png)
 
 ## Installation
 
@@ -12,16 +15,21 @@ First, install the [**Racket**](https://racket-lang.org/) programming language
 Racket version *8.9.0.4* or later is required, and at the time of writing
 the latest *stable* version is only 8.9, 
 so a [snapshot](https://users.cs.utah.edu/plt/snapshots/) build is required —
-pick the *shortest name*
-in the `Racket` section that fits your machine.
+if in doubt, pick the *shortest name* in the `Racket` section that fits your
+machine.
 
-Note for Linux users: Do read the comments on the main download page. A full
-unix-like distribution is recommended, so as to have `racket` in your path.
+*Note for Linux users:*
+Right click then `Save as...` and save the file in your `Downloads` folder.
+Then in a terminal, do `cd Downloads` then `sudo sh racket-….sh` then reply `y`
+to the first question (unix-like distribution) then press Enter for all
+subsequent questions.
 
-You may need to
+*Note for Windows Windows and MacOS users:*
 [configure the PATH environment variable](https://github.com/racket/racket/wiki/Configure-Command-Line-for-Racket)
 to include the directory containing the `racket` and `raco` executables.
-Type `racket -v` to check the version number.
+
+On the command line, enter `racket -v` to check that version number is at least
+8.9.0.4.
 
 Then install the `levintreesearch_cm` package and all
 its dependencies (all are Apache2 or Apache2/MIT licensed):
@@ -99,8 +107,8 @@ Note that the results may vary slightly depending on the value passed to
 `levintreesearch_cm` requires Racket version *8.9.0.4* or later
 (Apache 2.0/MIT), and depends on a few libraries that are licensed with 
 Apache-2.0/MIT.
-These dependencies are semi-automatically when following the installation
-instructions.
+These dependencies are installed semi-automatically when following the
+installation instructions.
 
 ## Datasets
 

@@ -67,7 +67,7 @@ limitations under the License.|#
            (generate-train-file n-cubes 25 30)
            (generate-train-file n-cubes 35 40)
            (generate-train-file n-cubes 45 50)) ; 800 000 cubes
-     (make-list 30 (generate-train-file n-cubes 50 50))))
+     (make-list 90 (generate-train-file n-cubes 50 50))))
   (define test-files '("data/cube-test-1000.rktd"))
 
   ;; These default globals can be overwritten from the command line.

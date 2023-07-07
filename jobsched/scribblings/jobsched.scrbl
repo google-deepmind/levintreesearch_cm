@@ -5,6 +5,8 @@
                     racket/future
                     racket/base]
          racket/runtime-path
+         racket/string
+         racket/list
          racket/file
          racket/contract/base]
 
@@ -51,10 +53,20 @@ with more than  100 000 fast-paced jobs to dispatch between them.
 Here is a simple example of a server-worker architecture.
 The first file contains the definition of the server:
 @filebox["adder-server.rkt"
-         (codeblock (file->string (build-path examples "adder-server.rkt")))]
+         (codeblock
+          (string-join
+           #:before-first "#lang racket"
+           (drop (file->lines (build-path examples "adder-server.rkt"))
+                 14)
+           "\n"))]
 And the second file contains the definition of the worker:
 @filebox["adder-worker.rkt"
-         (codeblock (file->string (build-path examples "adder-worker.rkt")))]
+         (codeblock
+          (string-join
+           #:before-first "#lang racket"
+           (drop (file->lines (build-path examples "adder-worker.rkt"))
+                 14)
+           "\n"))]
 
 
 All definitions exported by the various modules below are also exported by @racketmodname[jobsched].
@@ -64,7 +76,7 @@ See also the one-file example in @tt{examples/server-worker}.
 
 @section{Job}
 
-TODO: define readable
+@;{TODO: Define readable}
 @(define readable? #f)
 
 @defmodule[jobsched/job]

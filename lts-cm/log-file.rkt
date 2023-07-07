@@ -58,6 +58,7 @@ limitations under the License.|#
     (delete-file f)))
 
 ;; This is faster than using `fasl-log-file->act+ctxs-seq` for each .fasl file in `log-dir`.
+;; -> (vector-of (vector/c fxvector (vector-of fxvector)))
 (define (log-dir->act+ctxs-seqs log-dir)
   ;; We use a hash to avoid collisions with futures
   (define files (log-dir->fasl-files log-dir #:build? #t))

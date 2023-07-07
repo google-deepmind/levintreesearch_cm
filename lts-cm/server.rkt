@@ -34,6 +34,7 @@ limitations under the License.|#
          define2)
 
 (provide server-main
+         start-memory-guard-thread
          *init-cdb*
          *test-cdb*
          *problems*
@@ -113,9 +114,11 @@ limitations under the License.|#
 
   (define sched (make-scheduler make-solver-worker))
 
-  ;; Regularly check for free RAM and kill everything when less than 5% remains.
+  ;; Regularly check for free RAM and kill everything when less than X% remains.
   ;; Workers will be killed due to input port being close.
-  (define mem-thread (start-memory-guard-thread sched register!))
+  (define mem-thread (start-memory-guard-thread #:on-OOM (λ ()
+                                                           (register! 'status 'out-of-memory)
+                                                           (exit))))
 
   (for ([task (in-list tasks)])
     (scheduler-add-job! sched  #:data (cons (cons 'budget budget) task)))
@@ -182,7 +185,7 @@ limitations under the License.|#
                            (+= solved-expansions this-expansions)]
                           [else
                            (error "Unknown search status" search-status result)])])))
-  (kill-thread mem-thread)
+  (when mem-thread (kill-thread mem-thread))
   ;; (We could group the write operations, but it's not worth it given the small amount overall)
   (register! 'stop-solver (current-seconds))
   ;; NOTICE: n-solved is the number of problems solved in the *latest* iteration,
@@ -214,24 +217,26 @@ limitations under the License.|#
 ;=== Some utilities ===;
 ;======================;
 
-(define (start-memory-guard-thread sched register!)
-  (when (file-exists? "/proc/meminfo") ; unix/linux only
-    (thread
-     (λ ()
-       (let loop ()
-         (sleep 10)
-         (match (string-split (file->string "/proc/meminfo"))
-           [(list-rest "MemTotal:" totalkB "kB"
-                       "MemFree:" freekB "kB"
-                       "MemAvailable:" availkB "kB"
-                       _rst)
-            (when (< (string->number availkB) (* .05 (string->number totalkB)))
-              (register! 'status 'out-of-memory)
-              (eprintf "OUT OF MEMORY")
-              (exit))]
-           [else
-            (eprintf "Warning: cannot read or parse /proc/meminfo")])
-         (loop))))))
+(define (start-memory-guard-thread #:? [on-OOM (λ ()
+                                                 (eprintf "OUT OF MEMORY")
+                                                 (exit))]
+                                   #:? [OOM-ratio 0.05]
+                                   #:? [wait-seconds 10]) ; wait between each query
+  (and (file-exists? "/proc/meminfo") ; unix/linux only
+       (thread
+        (λ ()
+          (let loop ()
+            (sleep wait-seconds) ; every 10 seconds
+            (match (string-split (file->string "/proc/meminfo"))
+              [(list-rest "MemTotal:" totalkB "kB"
+                          "MemFree:" freekB "kB"
+                          "MemAvailable:" availkB "kB"
+                          _rst)
+               (when (< (string->number availkB) (* OOM-ratio (string->number totalkB)))
+                 (on-OOM))]
+              [else
+               (eprintf "Warning: cannot read or parse /proc/meminfo")])
+            (loop))))))
 
 ;============;
 ;=== Main ===;
@@ -244,9 +249,6 @@ limitations under the License.|#
   ;; other-cmd-args are given to the workers
   (define other-cmd-args
     (globals->command-line #:mutex-groups (list (list *init-cdb* *test-cdb*))))
-
-  (define init-cdb (or (*init-cdb*)
-                       (*test-cdb*)))
 
   (define log-dir (build-path-string log-base-dir (date-iso-file)))
   (printf "log-dir: ~a\n" log-dir)
@@ -266,7 +268,7 @@ limitations under the License.|#
            (define f (build-path-string log-dir cdb-file-name))
            (make-parent-directory* f)
            (cond [(*init-cdb*)
-                  (copy-file init-cdb f)]
+                  (copy-file (*init-cdb*) f)]
                  [else
                   ;; Create an empty cdb
                   (save-cdb (make-cdb n-actions) f)])
@@ -347,7 +349,7 @@ limitations under the License.|#
     ;; it can be that the found trajectories are different (refactoring),
     ;; and thus optimization may still be necessary.
     (when (and optimize? (> n-solved 0))
-      (printf "\n** Starting optimizer. n-proc-futures=~a\n" (*n-futures*))
+      (printf "\n** Starting optimizer. n-futures=~a\n" (*n-futures*))
       (define optim-register (make-register))
       (timev "\nOptimizer: " #:disp? #t
              (optimize log-dir optim-register #:reg (*regularizer*) #:n-actions n-actions)))

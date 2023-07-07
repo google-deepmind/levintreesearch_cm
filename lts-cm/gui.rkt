@@ -56,8 +56,7 @@ limitations under the License.|#
 
   (define header
     (vl-append
-     (hbl-append (text "Auto:  ")
-                 (text "Enter: " '(bold)) (text "run ")
+     (hbl-append (text "Enter: " '(bold)) (text "run ")
                  (text "Space: " '(bold)) (text "step ")
                  (text "Backspace: " '(bold)) (text "undo ")
                  (text "Home: " '(bold)) (text "reset "))
