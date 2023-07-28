@@ -285,9 +285,9 @@ limitations under the License.|#
                  new-xright)]
           [else res])))
 
-;============;
-;=== Main ===;
-;============;
+;============================;
+;=== Results of the paper ===;
+;============================;
 
 (module+ drracket
   (define (f->fcount f)
@@ -343,7 +343,7 @@ limitations under the License.|#
                             (pt -1.0 7.22597376812575e+86)
                             (pt 0.0 2.6881171418161356e+43)
                             (pt 2.2958874039497803e-41 3.9843245232693915e+224)))
-
+ 
   (apply p4-y-intersection (list (pt -2.0 5.658533273155181e+22)
                                  (pt -1.0 2.8292666365860003e+22)
                                  (pt 0.0 168204240034.82135)
@@ -373,16 +373,6 @@ limitations under the License.|#
                       (pt 4.1359030627651384e-25 5.3840574518170934e+23)
                       5.3840574518170934e+23)
 
-  ;; This may raise a denominator 0 exception, due only to numerical errors. How do we fix this?
-  ;; Well, the algorithm should stop here, but to know it can stop it needs to calculate the
-  ;; Δy gap, which is what it's trying to do
-  (p4-y-intersection (pt 0.0 7.314320620608649e-21)
-                     (pt 0.5 7.314320620608649e-21)
-                     (pt 1.0 7.31432062049658e-21)
-                     (pt 4.0 7.31432062049658e-21))
-
-
-
   (let ()
     (define pts
       (list
@@ -400,7 +390,7 @@ limitations under the License.|#
     (check-false (nan? x+))
     (list x- x+))
 
-  (begin
+  (let ()
     (define (2intersections pts)
       (list (intersection (map (λ (a) (apply pt a)) (take pts 4)))
             (intersection (map (λ (a) (apply pt a)) (rest pts)))))
@@ -413,5 +403,4 @@ limitations under the License.|#
                          (98.99998074454871 0.010101012065651978)
                          (98.999994360923 0.010101010676367445)
                          (99.44766334435741 4476633.443574088)
-                         (100.0 10000000.0))))
-  )
+                         (100.0 10000000.0)))))
