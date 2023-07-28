@@ -150,7 +150,8 @@ limitations under the License.|#
 (define (Δx pts)
   (match-define (list p0 p1 p2 p3 p4) pts)
   (match-define (list (pt x0 y0) (pt x1 y1) (pt x2 y2) (pt x3 y3) (pt x4 y4)) pts)
-  (define x- (min (max x1 (ppy-x-intersection p0 p1 y2)) x2)) ; x-axis value of line intersection with y axis
+  ;; x-axis value of line intersection with y axis
+  (define x- (min (max x1 (ppy-x-intersection p0 p1 y2)) x2))
   (define x+ (min (max x2 (ppy-x-intersection p4 p3 y2)) x3))
   (values x- x2 x+))
 
@@ -273,7 +274,8 @@ limitations under the License.|#
     (define res (convex-line-search* f pts #:stop-when stop-when #:callback callback))
     (define new-pts (dict-ref res 'pts))
     (cond [(= xright (dict-ref res 'xlow))
-           ;; Minimum is at the xright boundary, quadruple the range and try again with the current information
+           ;; Minimum is at the xright boundary, quadruple the range and try again
+           ;; with the current information
            (define new-xright (* 4. xright))
            (when (and (> iter 50) (= (expt 2 (exact-ceiling (log iter 2))) iter))
              (writeln (ids->assoc iter new-xright)))
@@ -384,7 +386,8 @@ limitations under the License.|#
     (match-define (list p0 p1 p2 p3 p4) pts)
     (match-define (list (pt x0 y0) (pt x1 y1) (pt x2 y2) (pt x3 y3) (pt x4 y4)) pts)
 
-    (define x- (min (max x1 (ppy-x-intersection p0 p1 y2)) x2)) ; x-axis value of line intersection with y axis
+     ; x-axis value of line intersection with y axis
+    (define x- (min (max x1 (ppy-x-intersection p0 p1 y2)) x2))
     (define x+ (min (max x2 (ppy-x-intersection p4 p3 y2)) x3))
     (check-false (nan? x-))
     (check-false (nan? x+))
