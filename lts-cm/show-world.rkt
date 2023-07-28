@@ -20,7 +20,17 @@ limitations under the License.|#
 
 (provide show-world)
 
-;; picts: sequence? ; (e.g., list, vector, etc.)
+;; on-key          : key-event? -> pict
+;; pict-init       : pict?
+;; parent          : (or/c (is-a?/c frame%) (is-a?/c dialog) #f)
+;; label           : label-string?
+;; width           : (or/c dimension-integer? #f)
+;; height          : (or/c dimension-integer? #f)
+;; frame-x         : (or/c position-integer? #f)
+;; frame-y         : (or/c position-integer? #f)
+;; frame-style     : (listof symbol?) ; see `style` in `frame`
+;; x-scroll-amount : positive-real?
+;; y-scroll-amount : positive-real?
 (define (show-world #:? [on-key (λ (ev) #f)]
                     #:? [pict-init (blank 100 100)]
                     #:? [parent #f]
