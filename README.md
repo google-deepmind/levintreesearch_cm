@@ -1,6 +1,6 @@
 # Levin Tree Search with Context Models
 
-Code for the paper "Levin Tree Search with Context Models" (IJCAI 2023, 
+Code for the paper "Levin Tree Search with Context Models" (Distinguished paper award at IJCAI 2023, 
 [extended version](https://arxiv.org/abs/2305.16945)).
 
 This code allows to reproduce the results of the paper. 
@@ -11,18 +11,15 @@ Please report any issue, or contact lorseau@google.com if you need help.
 ## Installation
 
 First, install the [**Racket**](https://racket-lang.org/) programming language
-(Apache-2.0/MIT).
-Racket version *8.9.0.4* or later is required, and at the time of writing
-the latest *stable* version is only 8.9, 
-so a [snapshot](https://users.cs.utah.edu/plt/snapshots/) build is required —
-if in doubt, pick the *shortest name* in the `Racket` section that fits your
-machine.
+(Apache-2.0/MIT), version 8.9.0.4 or above.
 
 *Note for Linux users:*
-Right click then `Save as...` and save the file in your `Downloads` folder.
-Then in a terminal, do `cd Downloads` then `sudo sh racket-….sh` then reply `y`
+After downloading the installer, in a terminal, do `cd Downloads` then
+`sudo sh racket-….sh` then reply `y`
 to the first question (unix-like distribution) then press Enter for all
-subsequent questions.
+the following questions.
+(A local install is also possible, but then you'll need to deal with
+access paths yourself.)
 
 *Note for Windows Windows and MacOS users:*
 [configure the PATH environment variable](https://github.com/racket/racket/wiki/Configure-Command-Line-for-Racket)
