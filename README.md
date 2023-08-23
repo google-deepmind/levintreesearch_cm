@@ -1,7 +1,7 @@
 # Levin Tree Search with Context Models
 
 Code for the paper "Levin Tree Search with Context Models" (Distinguished paper award at IJCAI 2023, 
-[extended version](https://arxiv.org/abs/2305.16945)).
+[IJCAI version](https://www.ijcai.org/proceedings/2023/0624.pdf), [extended version](https://arxiv.org/abs/2305.16945)).
 
 This code allows to reproduce the results of the paper. 
 Please report any issue, or contact lorseau@google.com if you need help.
