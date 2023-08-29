@@ -1,10 +1,13 @@
 # Levin Tree Search with Context Models
 
-Code for the paper "Levin Tree Search with Context Models" (Distinguished paper award at IJCAI 2023, 
-[IJCAI version](https://www.ijcai.org/proceedings/2023/0624.pdf), [extended version](https://arxiv.org/abs/2305.16945)).
+Code for the paper "Levin Tree Search with Context Models", published in the IJCAI 2023 proceedings.
+
+[[Distinguished paper award at IJCAI 2023](https://ijcai-23.org/distinguished-paper-awards/) — 
+[IJCAI version](https://www.ijcai.org/proceedings/2023/0624) —
+[extended version](https://arxiv.org/abs/2305.16945)]
 
 This code allows to reproduce the results of the paper. 
-Please report any issue, or contact lorseau@google.com if you need help.
+If for some reason this code doesn't work for you, please do file an issue.
 
 ![The 4 domains considered in the paper: Sokoban, Sliding Tile Puzzle, The Witness, Rubik's Cube](lts-cm/img/domains.png)
 
@@ -119,13 +122,19 @@ The included Rubik's cube datasets are new.
 ## Citing this work
 
 ```
-@inproceedings{orseau2023lts_cm,
-  author    = {Laurent Orseau and Marcus Hutter and Levi H.S. Lelis},
+@inproceedings{orseau2023ltscm,
   title     = {Levin Tree Search with Context Models},
-  booktitle = {Proceedings of the Thirty-Second International 
-               Joint Conference on Artificial Intelligence},
-  pages     = {--},
-  year      = {2023}
+  author    = {Orseau, Laurent and Hutter, Marcus and Lelis, Levi H. S.},
+  booktitle = {Proceedings of the Thirty-Second International Joint Conference on
+               Artificial Intelligence, {IJCAI-23}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Edith Elkind},
+  pages     = {5622--5630},
+  year      = {2023},
+  month     = {8},
+  note      = {Main Track},
+  doi       = {10.24963/ijcai.2023/624},
+  url       = {https://doi.org/10.24963/ijcai.2023/624},
 }
 ```
 
