@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.|#
 
 (require racket/fasl
+         racket/match
          "flonum.rkt"
+         "misc.rkt"
          define2)
 
 (provide (all-defined-out))
@@ -41,4 +43,10 @@ limitations under the License.|#
   (call-with-output-file* file (λ (out) (s-exp->fasl cdb out #:keep-mutable? #t)) #:exists exists))
 
 (define (load-cdb file)
-  (call-with-input-file* file (λ (in) (fasl->s-exp in #:datum-intern? #f))))
+  (define cdb (call-with-input-file* file (λ (in) (fasl->s-exp in #:datum-intern? #f))))
+  (match-define (CDB ctx.idx-vec n-rows n-cols βmatrix) cdb)
+  (assert (vector? ctx.idx-vec) ctx.idx-vec)
+  (assert (and (integer? n-rows) (> n-rows 0)) n-rows)
+  (assert (and (integer? n-cols) (> n-cols 0)) n-cols)
+  (assert (flvector? βmatrix))
+  cdb)

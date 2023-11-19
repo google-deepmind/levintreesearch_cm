@@ -40,7 +40,7 @@ limitations under the License.|#
      (syntax/loc #'expr
        (unless expr
          (eprintf "Assertion failed: ~v\n" 'expr)
-         (pretty-write (ids->assoc ctx ...))
+         (pretty-write (ids->assoc ctx ...) (current-error-port))
          (error "Assertion failed.")))]))
 
 ;; Suppresses any output on the output port (but not on the error port).
