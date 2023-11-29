@@ -121,7 +121,7 @@ Starts a scheduler. @racket[n-workers] racket instances are started on the same 
 
 The callback @racket[before-start] is called before a job is sent to a worker.
 This can be used to add new jobs to the scheduler.
-@emph{TODO: we could use this to filter out the job, but needs to loop}
+@;emph{TODO: we could use this to filter out the job, but needs to loop}
 
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
@@ -137,10 +137,11 @@ Re-exported from @racketmodname[racket/future].}
 The bindings in this section are also exported by @racketmodname[jobsched].
 
 @defproc[(start-worker [run-job (-> job? any)]) void?]{
- The following example starts a worker which waits for jobs.
+ Starts a worker which waits for jobs.
  Each time a job is received, the @racket[run-job] procedure is called.
- The data of the job can be retrieved with @racket[(job-data job)]
+ The data of the job can be retrieved with @racket[(job-data job)].
 
+ See example at the top.
 }
 
 @section[#:tag "utils"]{Utilities}
@@ -152,7 +153,16 @@ The bindings in this section are also exported by @racketmodname[jobsched].
                           [#:errortrace? errortrace? any/c #f]
                           [args path-string?]
                           ...)
-         (listof path-string?)]{}
+         (listof path-string?)]{
+Creates a command line to call the racket program @racket[path-to-prog].
+ If @racket[submod] is specificied, the corresponding submodule is called instead.
+ (For example I like to use a @racket[worker] submodule.)
+ By default, the @racket[main] submodule is used if available, or the @racket[main] function
+ if available.
+ The additional command-line arguments @racket[args] are passed to the program,
+ which may choose to parse them.
+ Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
+}
 
 
 
