@@ -32,6 +32,8 @@ limitations under the License.|#
 (define cdb-file-name "cdb-learn.fasl")
 
 ;; Prefab so as to be serializable
+;; ctx.idx-vec: (vector-of hasheq)
+;;   one hasheq per mutex set, translating a context integer to an index in the β matrix
 (struct CDB (ctx.idx-vec n-rows n-cols βmatrix) #:prefab)
 
 (define (make-cdb n-cols)
@@ -45,8 +47,10 @@ limitations under the License.|#
 (define (load-cdb file)
   (define cdb (call-with-input-file* file (λ (in) (fasl->s-exp in #:datum-intern? #f))))
   (match-define (CDB ctx.idx-vec n-rows n-cols βmatrix) cdb)
-  (assert (vector? ctx.idx-vec) ctx.idx-vec)
-  (assert (and (integer? n-rows) (> n-rows 0)) n-rows)
-  (assert (and (integer? n-cols) (> n-cols 0)) n-cols)
+  (assert (and (integer? n-rows) (>= n-rows 0)) n-rows)
+  (assert (and (integer? n-cols) (>= n-cols 0)) n-cols)
   (assert (flvector? βmatrix))
+  (when (> n-rows 0)
+    (assert (and (vector? ctx.idx-vec) (for/and ([h (in-vector ctx.idx-vec)]) (hash? h)))
+            ctx.idx-vec))
   cdb)
