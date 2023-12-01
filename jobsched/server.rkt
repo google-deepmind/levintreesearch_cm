@@ -26,7 +26,8 @@ limitations under the License.|#
          scheduler-count
          scheduler-add-job!
          scheduler-start
-         processor-count)
+         processor-count
+         start-simple-server)
 
 #|
 To monitor cpu speed and temperature:
@@ -179,3 +180,18 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
   ;; Terminate all workers, close the ports, etc.
   (for-each worker-terminate workers))
+
+;; A simpler server that hides the scheduler and the jobs
+(define (start-simple-server #:! worker-file
+                             #:! data-list
+                             #:! process-result
+                             #:? [submod-name 'worker]
+                             #:? [n-proc (min (length data-list) (processor-count))])
+  (define (make-worker-command _worker-index)
+    (make-racket-cmd worker-file #:submod submod-name))
+  (define sched (make-scheduler make-worker-command))
+  (for ([data (in-list data-list)])
+    (scheduler-add-job! sched #:data data))
+  (scheduler-start sched
+                   n-proc
+                   #:after-stop (λ (sched jb result) (process-result (job-data jb) result))))

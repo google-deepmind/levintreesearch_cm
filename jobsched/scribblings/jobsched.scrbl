@@ -141,6 +141,29 @@ Both callbacks can be used to add new jobs to the queue, using @racket[scheduler
 @defproc[(processor-count) nonnegative-integer?]{
 Re-exported from @racketmodname[racket/future].}
 
+
+@section[#:tag "utils"]{Utilities}
+
+@defmodule[jobsched/utils]
+The bindings in this section are also exported by @racketmodname[jobsched].
+
+@defproc[(make-racket-cmd [path-to-prog path-string?]
+                          [#:submod submod (or/c symbol? #f) #f]
+                          [#:errortrace? errortrace? any/c #f]
+                          [args path-string?]
+                          ...)
+         (listof path-string?)]{
+Creates a command line to call the racket program @racket[path-to-prog].
+ If @racket[submod] is specificied, the corresponding submodule is called instead.
+ (For example I like to use a @racket[worker] submodule.)
+ By default, the @racket[main] submodule is used if available, or the @racket[main] function
+ if available.
+ The additional command-line arguments @racket[args] are passed to the program,
+ which may choose to parse them.
+ Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
+}
+
+
 @section{Worker}
 
 @defmodule[jobsched/worker]
@@ -161,26 +184,45 @@ The bindings in this section are also exported by @racketmodname[jobsched].
  @racket[start-worker].
 }
 
-@section[#:tag "utils"]{Utilities}
+@section[#:tag "simple server/worker"]{Simple server / worker}
 
-@defmodule[jobsched/utils]
+@defproc[(start-simple-worker [run (-> readable? any)]
+                              [#:silent? silent? any/c #f])
+         void?]{
+Like @racket[start-worker] except that @racket[run] accepts the data of the job rather
+than the job. This masks the @racket[job] object.}
 
-@defproc[(make-racket-cmd [path-to-prog path-string?]
-                          [#:submod submod (or/c symbol? #f) #f]
-                          [#:errortrace? errortrace? any/c #f]
-                          [args path-string?]
-                          ...)
-         (listof path-string?)]{
-Creates a command line to call the racket program @racket[path-to-prog].
- If @racket[submod] is specificied, the corresponding submodule is called instead.
- (For example I like to use a @racket[worker] submodule.)
- By default, the @racket[main] submodule is used if available, or the @racket[main] function
- if available.
- The additional command-line arguments @racket[args] are passed to the program,
- which may choose to parse them.
- Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
+@defproc[(start-simple-server [#:worker-file worker-file path-string?]
+                              [#:data-list data-list (listof readable?)]
+                              [#:process-result process-result (procedure-arity-includes/c 2)]
+                              [#:submod-name submod-name symbol? 'worker]
+                              [#:n-proc n-proc integer? (min (length data-list) (processor-count))])
+         void?]{
+
+ Creates and starts a server, like @racket[scheduler-start], but hiding the scheduler and the job
+ objects.
+ The worker is assumed to be in the racket file @racket[worker-file] in the submodule
+ @racket[submod-name]. See @racket[start-simple-worker].
+
+ The workers will receive one element of @racket[data-list] at a time, and return
+ a result to be processed by @racket[process-result].
+
+ The server starts @racket[n-proc] workers in separate OS processes.
+
+ Note: By contrast to @racket[scheduler-start], the simple server does not allow to
+ add more tasks while it is running.
+ 
 }
 
+Try the following example with:
+@codeblock|{racket -l- jobsched/examples/server-worker-simple}|
+
+@filebox["server-worker-simple.rkt"
+         (codeblock
+          (file->string (build-path examples "server-worker-simple.rkt"))
+          #;(string-join
+           (file->lines (build-path examples "server-worker-simple.rkt"))
+           "\n"))]
 
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}

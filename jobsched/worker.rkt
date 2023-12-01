@@ -24,6 +24,10 @@ limitations under the License.|#
   [start-worker
    (->* [(procedure-arity-includes/c 1)]
         (#:silent? any/c)
+        any)]
+  [start-simple-worker
+   (->* [(procedure-arity-includes/c 1)]
+        (#:silent? any/c)
         any)]))
 
 ;; run-job : gbs-node? -> any/c
@@ -60,3 +64,5 @@ limitations under the License.|#
       (send-msg res)
       (loop))))
 
+(define (start-simple-worker run #:? [silent? #f])
+  (start-worker (λ (jb) (run (job-data jb))) #:silent? silent?))
