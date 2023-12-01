@@ -116,6 +116,8 @@ See also @racket[make-racket-cmd].}
 @defproc[(scheduler-add-job! [sched scheduler?] [#:data data readable?] [#:cost cost number? 0])
          void?]{
  Adds a job to the scheduler's queue.
+ A job can be added either before starting the scheduler, or during, using the @racket[#:before-start]
+ and @racket[#:after-stop] arguments of @racket[scheduler-start].
 
  The @racket[data] will be sent to the worker, who will receive it on its input port and will be
  accessible via @racket[job-data].
@@ -131,12 +133,9 @@ See also @racket[make-racket-cmd].}
 Starts a scheduler. @racket[n-workers] racket instances are started on the same machine.
 
 The callback @racket[before-start] is called before a job is sent to a worker.
-This can be used to add new jobs to the scheduler.
-@;emph{TODO: we could use this to filter out the job, but needs to loop}
-
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
-This can be used to process the result and add jobs to the queue.
+Both callbacks can be used to add new jobs to the queue, using @racket[scheduler-add-job!].
 }
 
 @defproc[(processor-count) nonnegative-integer?]{
@@ -148,7 +147,7 @@ Re-exported from @racketmodname[racket/future].}
 The bindings in this section are also exported by @racketmodname[jobsched].
 
 @defproc[(start-worker [run-job (-> job? any)]
-                       [silent? (#:silent? any/c #f)]) void?]{
+                       [#:silent? silent? any/c #f]) void?]{
  Starts a worker which waits for jobs.
  Each time a job is received, the @racket[run-job] procedure is called.
  The data of the job can be retrieved with @racket[(job-data job)].
