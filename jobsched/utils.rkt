@@ -27,6 +27,8 @@ limitations under the License.|#
     (display "jobsched: ")
     body ...))
 
+(define ready-message 'JOBSCHED:READY)
+
 ;; From:
 ;; https://github.com/racket/racket/blob/master/pkgs/racket-benchmarks/tests/
 ;;   racket/benchmarks/places/place-processes.rkt#L63

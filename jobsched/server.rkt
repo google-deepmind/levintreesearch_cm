@@ -127,7 +127,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
   (let loop ()
     ;; Find a worker that has output a value.
-    ;; The workers must start by sending out `'ready`.
+    ;; The workers must start by sending out `ready-message`.
     (define wk (apply sync workers))
     (define res (receive-msg (worker-in wk)))
     (define now (- (current-seconds) start-seconds))
@@ -142,10 +142,10 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
              (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
            ;; Remove the worker and add a new one.
            (set! workers (cons (new-worker) (remove wk workers)))]
-          [(eq? res 'ready)
+          [(eq? res ready-message)
            (when-verb (printf "time: ~a; WORKER READY\n" now))
            (void)]
-          [else
+          [(worker-job wk)
            ; Processing job result
            (-- n-pending)
            (define jb (worker-job wk))
@@ -156,7 +156,13 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                     now (worker-index wk) (job-index jb)  (job-cost jb)
                     (- (job-stop-ms jb) (job-start-ms jb))))
            (after-stop sched jb res) ; callback
-           (set-worker-job! wk #f)])
+           (set-worker-job! wk #f)]
+          [else
+           ; The job is #f, which means that a worker sends a message before `start-worker`
+           ; is able to deal with the worker's outputs.
+           (when-verb
+             (printf "WARNING: received unprocessed message (before `start-worker`?): ~v\n"
+                     res))])
 
     ;; Send a new job to the worker
     (define jb (scheduler-extract-min! sched))

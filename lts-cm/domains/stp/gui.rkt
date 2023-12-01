@@ -35,3 +35,6 @@ limitations under the License.|#
                          #:spec->state list->stp))
 
 (module+ main (main))
+
+#; ; Example:
+(play-stp (list->stp '(12 5 11 1 8 0 16 3 19 4 2 15 7 14 9 20 6 18 13 23 21 10 17 24 22)))

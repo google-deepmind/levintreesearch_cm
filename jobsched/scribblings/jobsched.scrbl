@@ -108,9 +108,20 @@ The bindings in this section are also exported by @racketmodname[jobsched].
 @defproc[(worker? [v any/c]) boolean?]{}
 
 @defproc[(make-scheduler [make-worker-command (-> nonnegative-integer? list?)]) scheduler?]{
+ Returns a scheduler which will use @racket[make-worker-command] to start the workers'
+ Racket processes.
+
 See also @racket[make-racket-cmd].}
 
-@defproc[(scheduler-add-job! [sched scheduler?] [#:data data readable?] [#:cost cost number? 0]) void?]{}
+@defproc[(scheduler-add-job! [sched scheduler?] [#:data data readable?] [#:cost cost number? 0])
+         void?]{
+ Adds a job to the scheduler's queue.
+
+ The @racket[data] will be sent to the worker, who will receive it on its input port and will be
+ accessible via @racket[job-data].
+
+ The @racket[cost] is used for ordering the job in the priority queue, which is ordered by minimum
+ cost.}
 
 @defproc[(scheduler-start [sched scheduler?]
                           [n-workers nonnegative-integer?]
@@ -136,12 +147,19 @@ Re-exported from @racketmodname[racket/future].}
 @defmodule[jobsched/worker]
 The bindings in this section are also exported by @racketmodname[jobsched].
 
-@defproc[(start-worker [run-job (-> job? any)]) void?]{
+@defproc[(start-worker [run-job (-> job? any)]
+                       [silent? (#:silent? any/c #f)]) void?]{
  Starts a worker which waits for jobs.
  Each time a job is received, the @racket[run-job] procedure is called.
  The data of the job can be retrieved with @racket[(job-data job)].
+ If @racket[silent?] is not @racket[#f], all output of @racket[run-job] to its output port is
+ suppressed---the error port remains untouched.
 
  See example at the top.
+
+ NOTICE: Any output @emph{before} @racket[start-worker] is called is processed by the server,
+ who is waiting for a ready signal from the worker. It is advised to avoid any output before
+ @racket[start-worker].
 }
 
 @section[#:tag "utils"]{Utilities}

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.|#
 
 (require racket/contract
+         racket/port
          "utils.rkt"
          "job.rkt"
          define2)
@@ -22,12 +23,13 @@ limitations under the License.|#
  (contract-out
   [start-worker
    (->* [(procedure-arity-includes/c 1)]
+        (#:silent? any/c)
         any)]))
 
 ;; run-job : gbs-node? -> any/c
 ;; The result of `start-worker` must be writeable and readable.
-(define (start-worker run-job)
-  (send-msg 'ready) ; This is important
+(define (start-worker run-job #:? [silent? #f])
+  (send-msg ready-message) ; This is important
 
   (let loop ()
     ;; If it's more than a few ms, something's wrong (IO on the server side?)
@@ -40,12 +42,19 @@ limitations under the License.|#
       ;; but frankly I don't understand why yet.
       (define cust (make-custodian))
       (define res
-        (parameterize ([current-custodian cust]
-                       ;; The output port is used for communication with the server,
-                       ;; and must thus be reserved for that, so we temporarily redirect the
-                       ;; output port to the error port
-                       [current-output-port (current-error-port)])
-          (run-job nd)))
+        (if silent?
+            (parameterize ([current-custodian cust]
+                           ;; The output port is used for communication with the server,
+                           ;; and must thus be reserved for that, so we temporarily redirect the
+                           ;; output port to the error port
+                           [current-output-port (open-output-nowhere)])
+              (run-job nd))
+            (parameterize ([current-custodian cust]
+                           ;; The output port is used for communication with the server,
+                           ;; and must thus be reserved for that, so we temporarily redirect the
+                           ;; output port to the error port
+                           [current-output-port (current-error-port)])
+              (run-job nd))))
       (custodian-shutdown-all cust)
 
       (send-msg res)
