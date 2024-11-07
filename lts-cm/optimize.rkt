@@ -68,7 +68,7 @@ limitations under the License.|#
 
 ;; cdb               : CDB? ; context database
 ;; βmatrix           : flvector ; matrix of the parameters as a long flvector
-;; jac               : flvector ; matrix as a long flvector, same dimensions as βvecs
+;; grad              : flvector ; matrix as a long flvector, same dimensions as βvecs
 ;; future-grads      : (vectorof flvector) ; copies of the gradient for parallelization
 ;; Δvec              : flvector? ; inverse learning rates (kind of) per context
 ;; trajectory-groups : (vectorof (vectorof trajectory?))
@@ -78,7 +78,7 @@ limitations under the License.|#
 ;; max-log-loss      : flonum ; maximum log loss of an individual trajectory.
 ;;                              Used for numerical stability.
 (struct optimization (cdb
-                      jac
+                      grad
                       future-grads
                       Δvec
                       trajectory-groups
@@ -92,12 +92,12 @@ limitations under the License.|#
 (define (optimization-n-rows  optim) (CDB-n-rows  (optimization-cdb optim)))
 (define (optimization-βmatrix optim) (CDB-βmatrix (optimization-cdb optim)))
 
-;; Notice: idx is the idx of βmatrix and jac
+;; Notice: idx is the idx of βmatrix and grad
 (define-syntax-rule (Δ-ref optim idx)
   (flvector-ref (optimization-Δvec optim)
                 (fxquotient (fx+ idx) (fx+ (optimization-n-cols optim)))))
 
-;; Notice: idx is the idx of βmatrix and jac
+;; Notice: idx is the idx of βmatrix and grad
 (define (Δ-set! optim idx v)
   (flvector-set! (optimization-Δvec optim)
                  (fxquotient (fx+ idx) (fx+ (optimization-n-cols optim)))
@@ -191,7 +191,7 @@ limitations under the License.|#
 ;; Recalculates the gradient, so may take time.
 (define (print-optimization-stats optim #:? [reg 0.])
   ;; Recalculate gradient to make sure the statistics are correct
-  (timev "jac" (gradient! optim))
+  (timev "grad" (gradient! optim))
   (gradient-add-regularizer! optim reg)
 
   (timev
@@ -221,7 +221,7 @@ limitations under the License.|#
 
 (define (duality-gap/βsimplex optim)
   (define ε       (optimization-ε-low   optim))
-  (define jac     (optimization-jac     optim))
+  (define grad    (optimization-grad    optim))
   (define βmatrix (optimization-βmatrix optim))
   (define n-cols  (optimization-n-cols  optim))
   (define n-rows  (optimization-n-rows  optim))
@@ -232,12 +232,12 @@ limitations under the License.|#
   (for/list ([row (in-range n-rows)])
     (define imin
       (for/fold ([gmin +inf.0] [imin -1] #:result imin)
-                ([g (in-flvector jac     (fx* row n-cols) (fx* (fx+ 1 row) n-cols))]
+                ([g (in-flvector grad (fx* row n-cols) (fx* (fx+ 1 row) n-cols))]
                  [i (in-naturals)])
         (if (< g gmin)
             (values g i)
             (values gmin imin))))
-    (for/sum ([g (in-flvector jac     (fx* row n-cols) (fx* (fx+ 1 row) n-cols))]
+    (for/sum ([g (in-flvector grad    (fx* row n-cols) (fx* (fx+ 1 row) n-cols))]
               [β (in-flvector βmatrix (fx* row n-cols))]
               [i (in-naturals)])
       (if (fx= i imin)
@@ -276,11 +276,11 @@ limitations under the License.|#
   (define n-rows  (CDB-n-rows  cdb))
   (define n-cols  (CDB-n-cols  cdb))
   (define βmatrix (CDB-βmatrix cdb))
-  (define jac    (make-flvector (fx* n-rows n-cols) 0.))
+  (define grad   (make-flvector (fx* n-rows n-cols) 0.))
   (define Δvec   (make-flvector n-rows 0.))
 
   (define n-proc (*n-futures*))
-  (define future-grads (timev "copy grads" (build-vector n-proc (λ _ (flvector-copy jac)))))
+  (define future-grads (timev "copy grads" (build-vector n-proc (λ _ (flvector-copy grad)))))
   ;; Group trajectories to spread among futures
   ;; This allows to keep exactly n-proc futures running without incurring the cost of
   ;; starting/stopping len futures instead
@@ -298,13 +298,13 @@ limitations under the License.|#
   ;; Center of the "β-simplex"
   (define β0 (fl* (fl- 1. (fl/ (fx->fl n-cols))) (fllog ε-low)))
 
-  (optimization cdb jac future-grads Δvec trajectory-groups idx-groups ε-low β0 0.))
+  (optimization cdb grad future-grads Δvec trajectory-groups idx-groups ε-low β0 0.))
 
 (define (reset-Δvec! optim)
   (flvector-fill! (optimization-Δvec optim) 0.))
 
 ;; NOTICE: Assumes that trajectory-logd/π has been called just before, with `#:save? #t`.
-(define (gradient!/trajectory/logd/π optim traj #:? [jac (optimization-jac optim)] #:? βvec-out)
+(define (gradient!/trajectory/logd/π optim traj #:? [grad (optimization-grad optim)] #:? βvec-out)
   (unless (= 0 (trajectory-length traj))
     (define βmatrix       (optimization-βmatrix  optim))
     (define n-cols   (fx+ (optimization-n-cols   optim))) ; fx+: compiler hint
@@ -327,21 +327,21 @@ limitations under the License.|#
                            (fl* L px)))) ; other action
         (for ([idx (in-fxvector idxs)])
           (define idx2 (fx+ idx act2))
-          (define old-g (flvector-ref jac idx2))
-          (flvector-set! jac idx2 (fl+ old-g g)))))))
+          (define old-g (flvector-ref grad idx2))
+          (flvector-set! grad idx2 (fl+ old-g g)))))))
 
 (define (reset-gradient! optim)
-  (define jac (optimization-jac optim))
+  (define grad (optimization-grad optim))
   (define idx-groups (optimization-idx-groups optim))
   ;; these could be memoized
   (define starts (for/list ([idxs (in-vector idx-groups)])
                    (fxvector-ref idxs 0)))
-  (define ends (append (cdr starts) (list (flvector-length jac))))
+  (define ends (append (cdr starts) (list (flvector-length grad))))
 
   ;; Not sure parallelizing this is really faster. It should be easy to test standalone though
   (for/async ([start (in-list starts)] [end (in-list ends)])
     (for ([i (in-range start end)])
-      (flvector-set! jac i 0.))))
+      (flvector-set! grad i 0.))))
 
 
 ;; Calculates the gradient but also sets the min-max-loss
@@ -360,13 +360,13 @@ limitations under the License.|#
      ;; With futures. Can be significantly faster than serial.
      (define grads (optimization-future-grads optim))
      (for/async ([trajs (in-vector (optimization-trajectory-groups optim))]
-                 [jac (in-vector grads)])
-       (flvector-fill! jac 0.) ; We need to reset *all* grads
+                 [grad (in-vector grads)])
+       (flvector-fill! grad 0.) ; We need to reset *all* grads
        (define βvec-out (make-flvector (optimization-n-cols optim) 0.)) ; one per future
        (for ([traj (in-vector trajs)])
-         (gradient!/trajectory/logd/π optim traj #:jac jac #:βvec-out βvec-out)))
+         (gradient!/trajectory/logd/π optim traj #:grad grad #:βvec-out βvec-out)))
      ;; Notice: This can take a lot of time when there are few trajectories
-     (timev "sum-async-grads" (flvectors-sum/async grads #:vec-out (optimization-jac optim)))]
+     (timev "sum-async-grads" (flvectors-sum/async grads #:vec-out (optimization-grad optim)))]
     [else
      ;; Serial.
      (for* ([trajs (in-vector (optimization-trajectory-groups optim))]
@@ -375,7 +375,7 @@ limitations under the License.|#
 
 
 (define (gradient-add-regularizer! optim reg)
-  (define jac     (optimization-jac     optim))
+  (define grad    (optimization-grad    optim))
   (define βmatrix (optimization-βmatrix optim))
   (define n-cols  (optimization-n-cols  optim))
   (define β0      (optimization-β0      optim))
@@ -386,13 +386,13 @@ limitations under the License.|#
 
   (for/async ([idxs (in-vector (optimization-idx-groups optim))])
     (for ([idx (in-fxvector idxs)])
-      (for ([i (in-range idx (+ idx n-cols))] [g (in-flvector jac idx)] [β (in-flvector βmatrix idx)])
+      (for ([i (in-range idx (+ idx n-cols))] [g (in-flvector grad idx)] [β (in-flvector βmatrix idx)])
         ;; Quadratic regularizer ½||β - β0||²
         ;; We choose β0 to be the 'center' of the β-simplex,
         ;; so as to push weights towards the uniform distribution.
         ;; This regularizer can be used with FW on both the β-simplex and the β-hypercube,
         ;; as well as GD on the hypercube.
-        (flvector-set! jac i (fl+ g (fl* R (fl- β β0))))))))
+        (flvector-set! grad i (fl+ g (fl* R (fl- β β0))))))))
 
 ;; The regularizer's cost, on the same scale as losses.
 (define (regularization-cost optim reg #:? [βmatrix (optimization-βmatrix optim)])
@@ -440,7 +440,7 @@ while the line search finds the strength of the update.
                                       #:! α
                                       #:! stage
                                       #:? [resets? #t])
-  (define jac     (optimization-jac     optim))
+  (define grad    (optimization-grad    optim))
   (define βmatrix (optimization-βmatrix optim))
   (define n-cols  (optimization-n-cols  optim))
   (define ε       (optimization-ε-low   optim))
@@ -460,7 +460,7 @@ while the line search finds the strength of the update.
     ;; Initialize Δvec with the current gradients.
     (for/async ([idxs (in-vector (optimization-idx-groups optim))])
       (for ([idx (in-fxvector idxs)])
-        (define G² (for/flsum ([g (in-flvector jac idx (fx+ idx n-cols))])
+        (define G² (for/flsum ([g (in-flvector grad idx (fx+ idx n-cols))])
                      (flsqr g)))
         (define G (flsqrt G²))
         (define Δ (Δ-ref optim idx))
@@ -473,7 +473,7 @@ while the line search finds the strength of the update.
     (for/async ([idxs (in-vector (optimization-idx-groups optim))])
       (for ([idx (in-fxvector idxs)])
         (for ([i (in-range idx (fx+ idx n-cols))]
-              [g (in-flvector jac idx)]
+              [g (in-flvector grad idx)]
               [β (in-flvector βmatrix idx)])
           (define Δ (Δ-ref optim idx))
           (define η (if (fl= 0. Δ) 0. (fl/ Δ)))
@@ -485,7 +485,7 @@ while the line search finds the strength of the update.
         (define Δ (Δ-ref optim idx))
         (define η (if (fl= 0. Δ) 0. (fl/ Δ)))
         (for ([i (in-range idx (fx+ idx n-cols))]
-              [g (in-flvector jac idx)]
+              [g (in-flvector grad idx)]
               [β (in-flvector βmatrix idx)])
           (flvector-set! βout i (flmax lnε (flmin 0. (fl- β (fl* α η g))))))))]))
 
@@ -499,7 +499,7 @@ while the line search finds the strength of the update.
   (timev "reg" (gradient-add-regularizer! optim reg))
 
   (define βmatrix      (optimization-βmatrix optim))
-  (define jac          (optimization-jac     optim))
+  (define grad         (optimization-grad    optim))
   (define n-cols  (fx+ (optimization-n-cols  optim))) ; fx+ to avoid boxing
 
   ;; α is in [0, 1]
