@@ -32,6 +32,8 @@ limitations under the License.|#
 (struct stp-state board ([row0 #:mutable] [col0 #:mutable] [n-solved #:mutable])
   #:transparent)
 
+(define stp->list board->list)
+
 (define (list->stp lst #:? [n-scrambles 0])
   (define N (integer-sqrt (length lst)))
   (define aboard (list->board lst N))
