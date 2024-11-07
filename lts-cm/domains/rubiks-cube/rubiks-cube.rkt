@@ -48,7 +48,7 @@ Eachs of the last 12 elements is a side index with its orientation (1 in 2).
 Initially all cubes are oriented at 0, which correspond to facing Up for the corner cubes
 of the or Up face, or Down for the others.
 If a cubie is oriented 0, then rotations D and U (and D' and U') preserve this orientation,
-but switch between the other 2; that is, if the orientation is 1, then the new orientation is 0
+but switch between the other 2; that is, if the orientation is 1, then the new orientation is 2
 and vice-versa.
 F and B preserve orientation 1 (and toggle the other orientations).
 R and L preserve orientation 2.
