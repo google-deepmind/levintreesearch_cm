@@ -69,7 +69,7 @@ limitations under the License.|#
 ;; cdb               : CDB? ; context database
 ;; βmatrix           : flvector ; matrix of the parameters as a long flvector
 ;; jac               : flvector ; matrix as a long flvector, same dimensions as βvecs
-;; future-jacs       : (vectorof flvector) ; copies of the jacobian for parallelization
+;; future-grads      : (vectorof flvector) ; copies of the gradient for parallelization
 ;; Δvec              : flvector? ; inverse learning rates (kind of) per context
 ;; trajectory-groups : (vectorof (vectorof trajectory?))
 ;; idx-groups        : (vectorof fxvector)
@@ -79,7 +79,7 @@ limitations under the License.|#
 ;;                              Used for numerical stability.
 (struct optimization (cdb
                       jac
-                      future-jacs
+                      future-grads
                       Δvec
                       trajectory-groups
                       idx-groups
@@ -188,11 +188,11 @@ limitations under the License.|#
     (trajectory-length traj)))
 
 ;; Prints some statistics about the optimization.
-;; Recalculates the jacobian, so may take time.
+;; Recalculates the gradient, so may take time.
 (define (print-optimization-stats optim #:? [reg 0.])
-  ;; Recalculate jacobian to make sure the statistics are correct
-  (timev "jac" (jacobian! optim))
-  (jacobian-add-regularizer! optim reg)
+  ;; Recalculate gradient to make sure the statistics are correct
+  (timev "jac" (gradient! optim))
+  (gradient-add-regularizer! optim reg)
 
   (timev
    "optimization-stats"
@@ -280,7 +280,7 @@ limitations under the License.|#
   (define Δvec   (make-flvector n-rows 0.))
 
   (define n-proc (*n-futures*))
-  (define future-jacs (timev "copy jacs" (build-vector n-proc (λ _ (flvector-copy jac)))))
+  (define future-grads (timev "copy grads" (build-vector n-proc (λ _ (flvector-copy jac)))))
   ;; Group trajectories to spread among futures
   ;; This allows to keep exactly n-proc futures running without incurring the cost of
   ;; starting/stopping len futures instead
@@ -288,7 +288,7 @@ limitations under the License.|#
   (define trajectory-groups
     ;; List of vectors
     (timev "trajectory-groups" (list->subvectors trajectories n-proc)))
-  ;; Group jacobian rows to spread among futures.
+  ;; Group gradient rows to spread among futures.
   ;; Not sure if fxvector is better than list here.
   (define idx-groups
      ;; indices of the rows in the matrix, grouped.
@@ -298,13 +298,13 @@ limitations under the License.|#
   ;; Center of the "β-simplex"
   (define β0 (fl* (fl- 1. (fl/ (fx->fl n-cols))) (fllog ε-low)))
 
-  (optimization cdb jac future-jacs Δvec trajectory-groups idx-groups ε-low β0 0.))
+  (optimization cdb jac future-grads Δvec trajectory-groups idx-groups ε-low β0 0.))
 
 (define (reset-Δvec! optim)
   (flvector-fill! (optimization-Δvec optim) 0.))
 
 ;; NOTICE: Assumes that trajectory-logd/π has been called just before, with `#:save? #t`.
-(define (jacobian!/trajectory/logd/π optim traj #:? [jac (optimization-jac optim)] #:? βvec-out)
+(define (gradient!/trajectory/logd/π optim traj #:? [jac (optimization-jac optim)] #:? βvec-out)
   (unless (= 0 (trajectory-length traj))
     (define βmatrix       (optimization-βmatrix  optim))
     (define n-cols   (fx+ (optimization-n-cols   optim))) ; fx+: compiler hint
@@ -330,7 +330,7 @@ limitations under the License.|#
           (define old-g (flvector-ref jac idx2))
           (flvector-set! jac idx2 (fl+ old-g g)))))))
 
-(define (reset-jacobian! optim)
+(define (reset-gradient! optim)
   (define jac (optimization-jac optim))
   (define idx-groups (optimization-idx-groups optim))
   ;; these could be memoized
@@ -344,9 +344,9 @@ limitations under the License.|#
       (flvector-set! jac i 0.))))
 
 
-;; Calculates the jacobian but also sets the min-max-loss
-(define (jacobian! optim #:? [futures? #t])
-  (timev "reset-jacobian" (reset-jacobian! optim))
+;; Calculates the gradient but also sets the min-max-loss
+(define (gradient! optim #:? [futures? #t])
+  (timev "reset-gradient" (reset-gradient! optim))
   (cond
     [futures?
      ;; 1. Calculate the trajectories log-costs and store them in each trajectory
@@ -358,23 +358,23 @@ limitations under the License.|#
      (timev "trajectories-logd/π/futures+save" (trajectories-logd/π/futures optim #:save? #t))
 
      ;; With futures. Can be significantly faster than serial.
-     (define jacs (optimization-future-jacs optim))
+     (define grads (optimization-future-grads optim))
      (for/async ([trajs (in-vector (optimization-trajectory-groups optim))]
-                 [jac (in-vector jacs)])
-       (flvector-fill! jac 0.) ; We need to reset *all* jacs
+                 [jac (in-vector grads)])
+       (flvector-fill! jac 0.) ; We need to reset *all* grads
        (define βvec-out (make-flvector (optimization-n-cols optim) 0.)) ; one per future
        (for ([traj (in-vector trajs)])
-         (jacobian!/trajectory/logd/π optim traj #:jac jac #:βvec-out βvec-out)))
+         (gradient!/trajectory/logd/π optim traj #:jac jac #:βvec-out βvec-out)))
      ;; Notice: This can take a lot of time when there are few trajectories
-     (timev "sum-async-jacs" (flvectors-sum/async jacs #:vec-out (optimization-jac optim)))]
+     (timev "sum-async-grads" (flvectors-sum/async grads #:vec-out (optimization-jac optim)))]
     [else
      ;; Serial.
      (for* ([trajs (in-vector (optimization-trajectory-groups optim))]
             [traj (in-vector trajs)])
-       (jacobian!/trajectory/logd/π optim traj))]))
+       (gradient!/trajectory/logd/π optim traj))]))
 
 
-(define (jacobian-add-regularizer! optim reg)
+(define (gradient-add-regularizer! optim reg)
   (define jac     (optimization-jac     optim))
   (define βmatrix (optimization-βmatrix optim))
   (define n-cols  (optimization-n-cols  optim))
@@ -426,7 +426,7 @@ Differences:
 * One learning rate per context (rather than per parameter, or one globally)
   Δvec is the vector of learning rates.
 * We are in the batch optimization case, so we avoid the off-by-one issue
-  by looking at the Jacobian norm before updating.
+  by looking at the gradient norm before updating.
 * The learning rates can be resetted (on square steps, or powers of 2 steps),
   so as to forget about previous large(r) gradients.
 * The learning rate is still multiplied by a factor found by line search.
@@ -495,8 +495,8 @@ while the line search finds the strength of the update.
 
 (define (batch/line-search optim #:! step #:? [α-guess .5] #:! reg)
 
-  (timev "jac" (jacobian! optim))
-  (timev "reg" (jacobian-add-regularizer! optim reg))
+  (timev "grad" (gradient! optim))
+  (timev "reg" (gradient-add-regularizer! optim reg))
 
   (define βmatrix      (optimization-βmatrix optim))
   (define jac          (optimization-jac     optim))
@@ -546,7 +546,7 @@ while the line search finds the strength of the update.
               query 0. (* 2. η1)
               #:yleft query-0
               #:xq η1 #:yq query-η1
-              ;; not using the jacobian information for now
+              ;; not using the gradient information for now
               #:callback
               (λ (dic)
                 (when-verb
@@ -593,9 +593,9 @@ while the line search finds the strength of the update.
       (timev "update" (batch/line-search optim #:step t #:α-guess α-guess #:reg reg)))
 
     (cond [(= 0 (modulo t Tprint)) ; Below is costly so we amortize
-           ;; Need to update the jacobian to calculate the stats. Might be a little wasteful.
-           (jacobian! optim)
-           (jacobian-add-regularizer! optim reg)
+           ;; Need to update the gradient to calculate the stats. Might be a little wasteful.
+           (gradient! optim)
+           (gradient-add-regularizer! optim reg)
            (define cost (flexp (trajectories-logd/π-saved optim)))
            (define reg-cost (regularization-cost optim reg))
            (define tot-cost (+ 0. cost reg-cost))
