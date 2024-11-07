@@ -36,8 +36,12 @@ limitations under the License.|#
 ;;   one hasheq per mutex set, translating a context integer to an index in the β matrix
 (struct CDB (ctx.idx-vec n-rows n-cols βmatrix) #:prefab)
 
+;; This should be `make-empty-cdb`. Also, case is inconsistent :(
 (define (make-cdb n-cols)
   (CDB #f 0 n-cols (make-flvector 0)))
+
+(define (CDB-empty? cdb)
+  (= (CDB-n-rows cdb) 0))
 
 ;;; Using fasl with its input/output port argument is by
 ;;; far the fastest way to read/write.
