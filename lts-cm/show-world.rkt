@@ -91,8 +91,8 @@ limitations under the License.|#
 
       (super-new [style (append (if hscroll? '(hscroll) '())
                                 (if vscroll? '(vscroll) '()))]
-                 [min-width  pw]
-                 [min-height ph])
+                 [min-width  (if hscroll? width pw)]
+                 [min-height (if vscroll? height ph)])
       (when (or hscroll? vscroll?)
         (send this init-auto-scrollbars pw ph 0. 0.))))
 
