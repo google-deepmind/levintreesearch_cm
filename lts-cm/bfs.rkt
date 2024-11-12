@@ -63,7 +63,7 @@ limitations under the License.|#
 ;=== Replay ===;
 ;==============;
 
-;; Returns the resulting bfs-node and the sequence of probabilities and contexts.
+;; Returns the resulting bfs-node, the sequence of probabilities, and the sequence of contexts.
 ;; Useful to retrieve a sequence of contexts from a cdb and a sequence of actions.
 ;; NOTICE: bfs-node-act-seq is in REVERSE order compared to the returned sequences
 ;;  of probabilities and contexts, and to act-seq.

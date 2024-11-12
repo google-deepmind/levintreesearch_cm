@@ -26,6 +26,7 @@ limitations under the License.|#
          timev
          "cdb.rkt"
          "date.rkt"
+         (only-in "beta-matrix.rkt" *sleeping?*)
          "log-file.rkt"
          "policy.rkt"
          "optimize.rkt"
@@ -301,6 +302,7 @@ limitations under the License.|#
            "--cdb" cdb-file
            "--problems" (*problems*)
            "--ε-mix" (number->string (*ε-mix*))
+           (and (*sleeping?*) "--sleeping")
            other-cmd-args))
 
   (define (make-register)

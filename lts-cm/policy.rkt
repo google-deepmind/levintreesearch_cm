@@ -58,9 +58,14 @@ limitations under the License.|#
 ;; of idxs
 ;;
 ;; idx: fxvector ; indices of the contexts to lookup in βmatrix
+;; sleeping? : bool? ; If #true, then unknown (and thus uninitialized) contexts predict like
+;;   the mixture instead of predicting with the uniform distribution. It's a different form of
+;;   'neutrality'. Predicting like the mixture leads to rescaling the weights, and pushes the
+;;   distribution away from the uniform distribution.
 (define (flproduct-mix/β-idx βmatrix idxs n-cols
                              #:vec-out [vec (make-flvector n-cols 0.)]
-                             #:? [n-idxs (fxvector-length idxs)])
+                             #:? [n-idxs (fxvector-length idxs)]
+                             #:? [sleeping? #f])
   (define βmax
     (for/fold ([βmax -inf.0])
               ([i (in-range n-cols)])
@@ -71,9 +76,17 @@ limitations under the License.|#
       (flvector-set! vec i β)
       (flmax (fl+ βmax) (fl+ β)))) ; the `fl+` is very important to avoid boxing flonum, which can be very costly!
 
+  ;; If `sleeping?` then rescale the prediction from number of mutex sets for which the context
+  ;; is known, to number of mutex sets.
+  (define 1+α
+    (if sleeping?
+        (fl/ (fx->fl (fxvector-length idxs))
+             (fx->fl n-idxs))
+        1.))
+
   (define Z
     (for/flsum ([β (in-flvector vec)] [i (in-naturals)])
-      (define θu (flexp (fl- β βmax)))
+      (define θu (flexp (fl* 1+α (fl- β βmax))))
       (flvector-set! vec i θu)
       θu))
 
