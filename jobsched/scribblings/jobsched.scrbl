@@ -231,7 +231,7 @@ Try the following example with:
 many cores and can share memory, but are limited in the kind of operations they can handle without
 blocking.
 Futures are well suited for numerical applications where garbage collection can be greatly reduced,
-allowing to make the most of the CPUs without requiring .
+allowing to make the most of the CPUs without requiring multiple Racket instances.
 
 
 @secref["places" #:doc '(lib "scribblings/reference/reference.scrbl")] allow more free-form racket
