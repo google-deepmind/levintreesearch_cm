@@ -17,11 +17,14 @@ limitations under the License.|#
          racket/system
          racket/struct
          (only-in racket/future processor-count)
+         syntax/location
+         (for-syntax racket/base)
          "utils.rkt"
          "job.rkt"
          define2)
 
-(provide (struct-out scheduler)
+(provide this-file
+         (struct-out scheduler)
          make-scheduler
          scheduler-count
          scheduler-add-job!
@@ -40,6 +43,14 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 (define-syntax-rule (-- x)
   (set! x (- x 1)))
 
+;; A utility to return the string-path of the current file.
+;; stx must be a syntax object created in the corresponding file, such as `#'here`.
+(define (this-file stx)
+  (path->string
+   (build-path (syntax-source-directory stx)
+               (syntax-source-file-name stx))))
+
+;—————————————————————————————————————————————————————————————————————————————————————————————————————
 
 (struct scheduler (queue [K #:mutable] make-worker-command [workers #:mutable])
   #:transparent)

@@ -136,6 +136,7 @@ The callback @racket[before-start] is called before a job is sent to a worker.
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
 Both callbacks can be used to add new jobs to the queue, using @racket[scheduler-add-job!].
+The Racket instances are terminated upon return.
 }
 
 @defproc[(processor-count) nonnegative-integer?]{
@@ -169,7 +170,7 @@ Creates a command line to call the racket program @racket[path-to-prog].
 @defmodule[jobsched/worker]
 The bindings in this section are also exported by @racketmodname[jobsched].
 
-@defproc[(start-worker [run-job (-> job? any)]
+@defproc[(start-worker [run-job (-> job? readable?)]
                        [#:silent? silent? any/c #f]) void?]{
  Starts a worker which waits for jobs.
  Each time a job is received, the @racket[run-job] procedure is called.
@@ -179,18 +180,28 @@ The bindings in this section are also exported by @racketmodname[jobsched].
 
  See example at the top.
 
- NOTICE: Any output @emph{before} @racket[start-worker] is called is processed by the server,
+ @bold{IMPORTANT:} Jobsched uses the input/output ports of the programs for communication.
+ Any output @emph{before} @racket[start-worker] is called is processed by the server,
  who is waiting for a ready signal from the worker. It is advised to avoid any output before
  @racket[start-worker].
+
+ Also note that @racket[run-job] must return a @racket[readable?] value, and that @racket[(void)]
+ is not readable.
 }
 
 @section[#:tag "simple server/worker"]{Simple server / worker}
 
-@defproc[(start-simple-worker [run (-> readable? any)]
+@defproc[(start-simple-worker [run (-> readable? readable?)]
                               [#:silent? silent? any/c #f])
          void?]{
 Like @racket[start-worker] except that @racket[run] accepts the data of the job rather
-than the job. This masks the @racket[job] object.}
+than the job. This masks the @racket[job] object.
+
+Note that @racket[start-simple-worker] can be used with both @racket[scheduler-start] and
+@racket[start-simple-server].
+
+ @bold{IMPORTANT:} See the remarks for @racket[start-worker].
+}
 
 @defproc[(start-simple-server [#:worker-file worker-file path-string?]
                               [#:data-list data-list (listof readable?)]
@@ -219,11 +230,14 @@ Try the following example with:
 
 @filebox["server-worker-simple.rkt"
          (codeblock
-          (file->string (build-path examples "server-worker-simple.rkt"))
-          #;(string-join
-           (file->lines (build-path examples "server-worker-simple.rkt"))
-           "\n"))]
+          (file->string (build-path examples "server-worker-simple.rkt")))]
 
+
+@defproc[(this-file [stx syntax?])
+         string?]{
+ Returns the path-string of the source of the syntax object.
+ The syntax object must be part of a file saved to disk.
+Often used as @racket[(this-file #'here)].}
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}
 

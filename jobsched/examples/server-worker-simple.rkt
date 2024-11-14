@@ -14,9 +14,6 @@
 ;=== Server ===;
 
 (module+ main
-  (require racket/runtime-path)
-
-  (define-runtime-path this-file "server-worker-simple.rkt")
 
   (define (process-result data result)
     (printf "~a × ~a = ~a\n" (first data) (second data) result))
@@ -25,6 +22,6 @@
     (for*/list ([x 5] [y 5]) (list x y)))
   
   (start-simple-server
-   #:worker-file this-file
+   #:worker-file (this-file #'here)
    #:data-list data-list
    #:process-result process-result))
