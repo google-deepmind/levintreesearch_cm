@@ -26,7 +26,7 @@ limitations under the License.|#
 (provide this-file
          (struct-out scheduler)
          make-scheduler
-         scheduler-count
+         scheduler-n-queued-jobs
          scheduler-add-job!
          scheduler-start
          processor-count
@@ -52,7 +52,8 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
 ;—————————————————————————————————————————————————————————————————————————————————————————————————————
 
-(struct scheduler (queue [K #:mutable] make-worker-command [workers #:mutable])
+(struct scheduler
+  (queue [K #:mutable] make-worker-command [workers #:mutable] [n-active-jobs #:mutable])
   #:transparent)
 
 (define (make-scheduler make-worker)
@@ -62,19 +63,19 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                              (if (= ca cb)
                                (<= (job-index a) (job-index b))
                                (<= ca cb)))))
-  (scheduler queue 0 make-worker '()))
+  (scheduler queue #;K: 0 make-worker #;workers: '() #;n-active-jobs: 0))
 
 (define (scheduler-next-job-index! g)
   (define K+1 (+ 1 (scheduler-K g)))
   (set-scheduler-K! g K+1)
   K+1)
 
-(define (scheduler-count g)
+(define (scheduler-n-queued-jobs g)
   (heap-count (scheduler-queue g)))
 
 ;; Returns a `job` or #f if the scheduler is empty.
 (define (scheduler-min g)
-  (and (> (scheduler-count g) 0)
+  (and (> (scheduler-n-queued-jobs g) 0)
        (heap-min (scheduler-queue g))))
 
 ;; Returns a `job` and removes the node from the scheduler,
@@ -135,7 +136,14 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   (define workers
     (build-list n-workers (λ _ (new-worker))))
 
-  (define n-pending 0) ; number of pending jobs
+  ;; Check no active job
+  (unless (= 0 (scheduler-n-active-jobs sched))
+    (error 'scheduler-start
+           "expected: (= 0 (scheduler-n-active-jobs sched))"
+           (scheduler-n-active-jobs sched)))
+
+  (define (+=n-active-jobs n)
+    (set-scheduler-n-active-jobs! sched (+ n (scheduler-n-active-jobs sched))))
 
   (let loop ()
     ;; Find a worker that has output a value.
@@ -150,7 +158,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
            ;; push the job back into the queue (should we make a child node instead?)
            (define jb (worker-job wk))
            (when jb
-             (-- n-pending)
+             (+=n-active-jobs -1)
              (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
            ;; Remove the worker and add a new one.
            (set! workers (cons (new-worker) (remove wk workers)))]
@@ -159,7 +167,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
            (void)]
           [(worker-job wk)
            ; Processing job result
-           (-- n-pending)
+           (+=n-active-jobs -1)
            (define jb (worker-job wk))
            (set-job-stop-ms! jb (current-milliseconds))
            (when-verb
@@ -182,11 +190,11 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
       ;; Give a chance to modify the data in the node, and maybe add sibling nodes
       (before-start sched jb) ; callback
       (set-worker-job! wk jb)
-      (++ n-pending)
+      (+=n-active-jobs 1)
       (set-job-start-ms! jb (current-milliseconds))
       (send-msg (struct->list jb) (worker-out wk)))
 
-    (unless (= 0 n-pending)
+    (unless (= 0 (scheduler-n-active-jobs sched)) ; also implies queue is empty
       (loop)))
 
   ;; Terminate all workers, close the ports, etc.

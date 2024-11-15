@@ -125,6 +125,12 @@ See also @racket[make-racket-cmd].}
  The @racket[cost] is used for ordering the job in the priority queue, which is ordered by minimum
  cost.}
 
+@defproc[(scheduler-n-queued-jobs [sched scheduler?]) exact-nonnegative-integer?]{
+Returns the number of jobs pending in the queue.}
+
+@defproc[(scheduler-n-active-jobs [sched scheduler?]) exact-nonnegative-integer?]{
+Returns the number of jobs that have started and not yet finished.}
+
 @defproc[(scheduler-start [sched scheduler?]
                           [n-workers nonnegative-integer?]
                           [#:before-start before-start (-> scheduler? job? any) void]
