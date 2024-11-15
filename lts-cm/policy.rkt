@@ -57,36 +57,31 @@ limitations under the License.|#
 ;; n-idx must be at most `(fxvector-length idxs)`, but can be used to use only a prefix set
 ;; of idxs
 ;;
-;; idx: fxvector ; indices of the contexts to lookup in βmatrix
-;; sleeping? : bool? ; If #true, then unknown (and thus uninitialized) contexts predict like
-;;   the mixture instead of predicting with the uniform distribution. It's a different form of
-;;   'neutrality'. Predicting like the mixture leads to rescaling the weights, and pushes the
-;;   distribution away from the uniform distribution.
+;; idx : fxvector ; indices of the contexts to lookup in βmatrix
+;; default-βs : (or #f flvector?)
+;;   If provided, is used for unknown contexts.
 (define (flproduct-mix/β-idx βmatrix idxs n-cols
                              #:vec-out [vec (make-flvector n-cols 0.)]
                              #:? [n-idxs (fxvector-length idxs)]
-                             #:? [sleeping? #f])
+                             #:? [default-βs #f])
+  (define fln-no-idx (fx->fl (fx- (fxvector-length idxs) n-idxs))) ; number of unknown contexts
   (define βmax
     (for/fold ([βmax -inf.0])
               ([i (in-range n-cols)])
       (define β
-        (for/flsum ([idx (in-fxvector idxs)]
-                    [_j (in-range (fx+ n-idxs))]) ; use only the first n-idxs elements
-          (flvector-ref βmatrix (fx+ idx i))))
+        (fl+
+         (for/flsum ([idx (in-fxvector idxs)]
+                     [_j (in-range (fx+ n-idxs))]) ; use only the first n-idxs elements
+           (flvector-ref βmatrix (fx+ idx i)))
+         (if default-βs
+             (fl* fln-no-idx (flvector-ref default-βs i))
+             0.)))
       (flvector-set! vec i β)
       (flmax (fl+ βmax) (fl+ β)))) ; the `fl+` is very important to avoid boxing flonum, which can be very costly!
 
-  ;; If `sleeping?` then rescale the prediction from number of mutex sets for which the context
-  ;; is known, to number of mutex sets.
-  (define 1+α
-    (if sleeping?
-        (fl/ (fx->fl (fxvector-length idxs))
-             (fx->fl n-idxs))
-        1.))
-
   (define Z
     (for/flsum ([β (in-flvector vec)] [i (in-naturals)])
-      (define θu (flexp (fl* 1+α (fl- β βmax))))
+      (define θu (flexp (fl- β βmax)))
       (flvector-set! vec i θu)
       θu))
 

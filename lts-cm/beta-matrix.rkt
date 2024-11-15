@@ -16,7 +16,6 @@ limitations under the License.|#
 (require timev
          racket/fixnum
          racket/list
-         global
          "policy.rkt"
          "flonum.rkt"
          "misc.rkt"
@@ -24,9 +23,6 @@ limitations under the License.|#
          define2)
 
 (provide (all-defined-out))
-
-;; Forwarded to the workers in "server.rkt"
-(define-global:boolean *sleeping?* #f "Unknown contexts are sleeping are predict like the average?")
 
 #|
 The βmatrix is just a long matrix (actually a vector) of all the flonum parameters.
@@ -144,8 +140,7 @@ in the βmatrix.
 
   (values new-cdb trajectories))
 
-;; sleeping? : see `flproduct-mix/β-idx`
-(define (make-cdb-predictor cdb #:? [sleeping? (*sleeping?*)])
+(define (make-cdb-predictor cdb)
   (define n-actions     (CDB-n-cols      cdb))
   (define ctx.idx-vec   (CDB-ctx.idx-vec cdb)) ; ctx code to index in βmatrix converter
   (define βmatrix       (CDB-βmatrix     cdb))
@@ -154,8 +149,8 @@ in the βmatrix.
   (define idxs          #f)
 
   (if (not ctx.idx-vec)
-      (λ (ctxs ε-mix) uniform-flvec)
-      (λ (ctxs ε-mix)
+      (λ (ctxs ε-mix #:? [default-βs #f]) uniform-flvec)
+      (λ (ctxs ε-mix #:? default-βs)
         (unless idxs
           ;; Create the vector of indices in case it wasn't created before.
           ;; This assumes that the number of mutex sets is constant.
@@ -182,6 +177,6 @@ in the βmatrix.
                uniform-flvec]
               [else
                (flproduct-mix/β-idx βmatrix idxs n-actions
-                                    #:vec-out vec-out #:n-idxs n-idxs #:sleeping? sleeping?)
+                                    #:vec-out vec-out #:n-idxs n-idxs #:default-βs default-βs)
                (mix-uniform!/flvector vec-out n-actions ε-mix)
                vec-out]))))

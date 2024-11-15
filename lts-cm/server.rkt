@@ -26,7 +26,6 @@ limitations under the License.|#
          timev
          "cdb.rkt"
          "date.rkt"
-         (only-in "beta-matrix.rkt" *sleeping?*)
          "log-file.rkt"
          "policy.rkt"
          "optimize.rkt"
@@ -124,7 +123,7 @@ limitations under the License.|#
   (for ([task (in-list tasks)])
     (scheduler-add-job! sched  #:data (cons (cons 'budget budget) task)))
 
-  (define n-tasks (scheduler-count sched))
+  (define n-tasks (scheduler-n-queued-jobs sched))
   (printf "Number of tasks: ~a\n" n-tasks)
 
   (define start-seconds (current-seconds))
@@ -302,7 +301,6 @@ limitations under the License.|#
            "--cdb" cdb-file
            "--problems" (*problems*)
            "--ε-mix" (number->string (*ε-mix*))
-           (and (*sleeping?*) "--sleeping")
            other-cmd-args))
 
   (define (make-register)
