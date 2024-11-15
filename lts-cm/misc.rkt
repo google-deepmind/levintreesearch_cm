@@ -30,18 +30,30 @@ limitations under the License.|#
 
 (module+ test (require rackunit))
 
-(define-syntax assert
-  (syntax-parser
-    [(_ expr:expr)
-     (syntax/loc #'expr
-       (unless expr
-           (error "Assertion failed:" 'expr)))]
-    [(_ expr:expr ctx:expr ...)
-     (syntax/loc #'expr
-       (unless expr
-         (eprintf "Assertion failed: ~v\n" 'expr)
-         (pretty-write (ids->assoc ctx ...) (current-error-port))
-         (error "Assertion failed.")))]))
+;; Simple assertions with error location and automatic printing of the argument values and context
+;; values.
+(define-syntax (assert stx)
+  (syntax-parse stx
+    [(_ (op:expr arg:expr ...) ctx:expr ...)
+     (syntax-case stx ()
+       [(_ test _ctx ...) ; to obtain the source location of the expression
+        #'(let ([vals (list arg ...)])
+            (unless (apply op vals)
+              (define syms '(arg ...))
+              (define ctx-vals (list ctx ...))
+              (define ctx-syms '(ctx ...))
+              (define msg1
+                (apply string-append
+                       (format "Assertion failed.\n expected: ~a\n arguments:\n" 'test)
+                       (map (λ (sym val) (format "  ~a: ~a\n" sym val)) syms vals)))
+              (define msg
+                (if (null? ctx-syms)
+                    msg1
+                    (apply string-append
+                           msg1
+                           " context:\n"
+                           (map (λ (sym val) (format "  ~a: ~a\n" sym val)) ctx-syms ctx-vals))))
+              (raise-syntax-error #f msg #'test)))])]))
 
 ;; Suppresses any output on the output port (but not on the error port).
 (define-syntax-rule (silent body ...)
