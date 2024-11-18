@@ -38,31 +38,38 @@ limitations under the License.|#
   (let loop ()
     ;; If it's more than a few ms, something's wrong (IO on the server side?)
     (define msg (receive-msg))
-    (unless (eof-object? msg)
-      (define nd (apply job msg))
+    (cond
+      [(eof-object? msg)
+       ;; Terminate the worker
+       (void)]
+      [(eq? msg ask-ready-message)
+       (send-msg ready-message)
+       (loop)]
+      [else
+       (define nd (apply job msg))
 
-      ;; The custodian ensures that all open files are closed. I was getting a
-      ;; "too many files opened" error after 30min and many simple jobs,
-      ;; but frankly I don't understand why yet.
-      (define cust (make-custodian))
-      (define res
-        (if silent?
-            (parameterize ([current-custodian cust]
-                           ;; The output port is used for communication with the server,
-                           ;; and must thus be reserved for that, so we temporarily redirect the
-                           ;; output port to the error port
-                           [current-output-port (open-output-nowhere)])
-              (run-job nd))
-            (parameterize ([current-custodian cust]
-                           ;; The output port is used for communication with the server,
-                           ;; and must thus be reserved for that, so we temporarily redirect the
-                           ;; output port to the error port
-                           [current-output-port (current-error-port)])
-              (run-job nd))))
-      (custodian-shutdown-all cust)
+       ;; The custodian ensures that all open files are closed. I was getting a
+       ;; "too many files opened" error after 30min and many simple jobs,
+       ;; but frankly I don't understand why yet.
+       (define cust (make-custodian))
+       (define res
+         (if silent?
+             (parameterize ([current-custodian cust]
+                            ;; The output port is used for communication with the server,
+                            ;; and must thus be reserved for that, so we temporarily redirect the
+                            ;; output port to the error port
+                            [current-output-port (open-output-nowhere)])
+               (run-job nd))
+             (parameterize ([current-custodian cust]
+                            ;; The output port is used for communication with the server,
+                            ;; and must thus be reserved for that, so we temporarily redirect the
+                            ;; output port to the error port
+                            [current-output-port (current-error-port)])
+               (run-job nd))))
+       (custodian-shutdown-all cust)
 
-      (send-msg res)
-      (loop))))
+       (send-msg res)
+       (loop)])))
 
 (define (start-simple-worker run #:? [silent? #f])
   (start-worker (λ (jb) (run (job-data jb))) #:silent? silent?))

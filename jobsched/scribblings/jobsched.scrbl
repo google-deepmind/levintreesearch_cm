@@ -132,17 +132,26 @@ Returns the number of jobs pending in the queue.}
 Returns the number of jobs that have started and not yet finished.}
 
 @defproc[(scheduler-start [sched scheduler?]
-                          [n-workers nonnegative-integer?]
+                          [n-workers exact-nonnegative-integer? #f]
                           [#:before-start before-start (-> scheduler? job? any) void]
-                          [#:after-stop after-stop (-> scheduler? job? readable? any) void])
+                          [#:after-stop after-stop (-> scheduler? job? readable? any) void]
+                          [#:terminate-on-exit? terminate? any/c #t])
          void?]{
-Starts a scheduler. @racket[n-workers] racket instances are started on the same machine.
+Starts a scheduler,
+making sure that @racket[n-workers] racket worker instances are running on the same machine.
+Some instances may already be running due to a previous call to @racket[scheduler-start]
+ with @racket[#:terminate-on-exit? #false] for the same scheduler.
+ If there are already more running worker instances than @racket[n-workers], workers are terminated
+ to match @racket[n-workers].
+ If @racket[n-workers] is @racket[#f], the number of running worker instances is not changed,
+ and previous running instances are re-used.
+ If @racket[terminate?] is not @racket[#f], then all worker instances are terminated when
+ returning from the function call.
 
 The callback @racket[before-start] is called before a job is sent to a worker.
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
 Both callbacks can be used to add new jobs to the queue, using @racket[scheduler-add-job!].
-The Racket instances are terminated upon return.
 }
 
 @defproc[(processor-count) nonnegative-integer?]{

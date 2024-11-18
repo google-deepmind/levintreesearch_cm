@@ -27,7 +27,9 @@ limitations under the License.|#
     (display "jobsched: ")
     body ...))
 
-(define ready-message 'JOBSCHED:READY)
+(define ask-ready-message 'JOBSCHED:WORKER-READY?)
+(define ready-message     'JOBSCHED:READY)
+
 
 ;; From:
 ;; https://github.com/racket/racket/blob/master/pkgs/racket-benchmarks/tests/
