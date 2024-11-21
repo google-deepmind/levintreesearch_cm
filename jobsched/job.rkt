@@ -24,3 +24,6 @@ limitations under the License.|#
 ;; stop-ms: milliseconds when the job stops running (as seen by the server)
 (struct job (index cost data [start-ms #:mutable] [stop-ms #:mutable])
   #:transparent)
+
+(define (job-time-ms jb)
+  (- (job-stop-ms  jb) (job-start-ms jb)))
