@@ -22,6 +22,6 @@
     (for*/list ([x 5] [y 5]) (list x y)))
   
   (start-simple-server
-   #:worker-file (this-file #'here)
+   #:worker-file (this-file)
    #:data-list data-list
    #:process-result process-result))

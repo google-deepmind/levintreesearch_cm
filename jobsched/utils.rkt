@@ -13,8 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.|#
 
-(require global
+(require (for-syntax racket/base syntax/parse)
+         global
          racket/path
+         syntax/location
          define2)
 
 (provide (all-defined-out))
@@ -26,6 +28,19 @@ limitations under the License.|#
   (when (*jobsched-verb?*)
     (display "jobsched: ")
     body ...))
+
+(define (syntax->path stx)
+  (define dir (syntax-source-directory stx))
+  (define name (syntax-source-file-name stx))
+  (cond [(and dir name) (build-path dir name)]
+        [name]
+        [else #f]))
+
+(define-syntax (this-file stx)
+  ;; The source of #'stx object is the file where the syntax is *defined*,
+  ;; while the source of #'id below is the file where the syntax is *used*.
+  (syntax-case stx ()
+    [(id) #'(syntax->path #'id)]))
 
 (define ask-ready-message 'JOBSCHED:WORKER-READY?)
 (define ready-message     'JOBSCHED:READY)

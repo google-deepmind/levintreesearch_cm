@@ -181,6 +181,8 @@ Creates a command line to call the racket program @racket[path-to-prog].
  Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
 }
 
+@defform[(this-file)]{
+ 'Returns' the path-string of the enclosing file, or @racket[#f] if there is no enclosing file.}
 
 @section{Worker}
 
@@ -248,13 +250,6 @@ Try the following example with:
 @filebox["server-worker-simple.rkt"
          (codeblock
           (file->string (build-path examples "server-worker-simple.rkt")))]
-
-
-@defproc[(this-file [stx syntax?])
-         string?]{
- Returns the path-string of the source of the syntax object.
- The syntax object must be part of a file saved to disk.
-Often used as @racket[(this-file #'here)].}
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}
 
