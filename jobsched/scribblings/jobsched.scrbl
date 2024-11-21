@@ -139,14 +139,16 @@ Returns the number of jobs that have started and not yet finished.}
          void?]{
 Starts a scheduler,
 making sure that @racket[n-workers] racket worker instances are running on the same machine.
-Some instances may already be running due to a previous call to @racket[scheduler-start]
- with @racket[#:terminate-on-exit? #false] for the same scheduler.
- If there are already more running worker instances than @racket[n-workers], workers are terminated
- to match @racket[n-workers].
+
+If @racket[terminate?] is not @racket[#f], then all worker instances are terminated when
+ returning from the function call.
+If @racket[terminate?] is @racket[#f], workers are not terminated when returning from the call,
+so they can be re-used for a subsequent call to @racket[scheduler-start] without starting the
+workers (and the corresponding racket instances) again.
  If @racket[n-workers] is @racket[#f], the number of running worker instances is not changed,
  and previous running instances are re-used.
- If @racket[terminate?] is not @racket[#f], then all worker instances are terminated when
- returning from the function call.
+ If there are already more running worker instances than @racket[n-workers], some workers are
+ killed to match @racket[n-workers].
 
 The callback @racket[before-start] is called before a job is sent to a worker.
 The callback @racket[after-stop] is called when a job is finished and the result is received
