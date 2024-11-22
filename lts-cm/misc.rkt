@@ -30,30 +30,66 @@ limitations under the License.|#
 
 (module+ test (require rackunit))
 
+(define (raise-assert-error test-sym syms vals ctx-syms ctx-vals stx-where)
+  (define msg
+    (string-append
+     ;; No terminating "\n" in case single line, to be followed by " in ..."
+     (format "Assertion failed: ~a" test-sym)
+     ;; If multiline, terminates with "\n"
+     (if (null? syms)
+         ""
+         (apply string-append
+                "\n arguments:\n"
+                (map (λ (sym val) (format "  ~a: ~v\n" sym val)) syms vals)))
+     (if (null? ctx-syms)
+         ""
+         (apply string-append
+                "\n context:\n"
+                (map (λ (sym val) (format "  ~a: ~v\n" sym val)) ctx-syms ctx-vals)))))
+  (raise-syntax-error #f msg stx-where))
+
+;; TODO: extract to separate lib and add doc.
 ;; Simple assertions with error location and automatic printing of the argument values and context
 ;; values.
+;; If the operator is a procedure (not a syntax object like `or`) then the argument values are also
+;; displayed as context information, if they are identifiers (not expressions).
+;; Additional context information can be provided.
+;; So `(assert (equal? obj1 obj2))` will print the values of obj1 and obj2 if the assertion fails.
+;; To avoid printing these, use `(assert (or (equal? obj1 obj2)))`. To avoid printing only one
+;; of these, use `(assert (equal? obj1 (or obj2)))`
 (define-syntax (assert stx)
   (syntax-parse stx
-    [(_ (op:expr arg:expr ...) ctx:expr ...)
-     (syntax-case stx ()
-       [(_ test _ctx ...) ; to obtain the source location of the expression
-        #'(let ([vals (list arg ...)])
-            (unless (apply op vals)
-              (define syms '(arg ...))
-              (define ctx-vals (list ctx ...))
-              (define ctx-syms '(ctx ...))
-              (define msg1
-                (apply string-append
-                       (format "Assertion failed.\n expected: ~a\n arguments:\n" 'test)
-                       (map (λ (sym val) (format "  ~a: ~a\n" sym val)) syms vals)))
-              (define msg
-                (if (null? ctx-syms)
-                    msg1
-                    (apply string-append
-                           msg1
-                           " context:\n"
-                           (map (λ (sym val) (format "  ~a: ~a\n" sym val)) ctx-syms ctx-vals))))
-              (raise-syntax-error #f msg #'test)))])]))
+    [(_ (op:id (~or* arg-id:id arg-expr:expr) ...) ctx:expr ...)
+     #:when (not (syntax-local-value #'op (λ () #f))) ; check if op is not a syntax object like `or`
+     (with-syntax ([test (syntax-case stx () [(_ test _ctx ...) #'test])])
+       #'(unless (op {~? arg-id arg-expr} ...)
+           (raise-assert-error
+            'test '({~? arg-id} ...) (list {~? arg-id} ...) '(ctx ...) (list ctx ...) #'test)))]
+    ;; When first clause doesn't match
+    [(_ test:expr ctx:expr ...)
+     #'(unless test
+         (raise-assert-error 'test '() '() '(ctx ...) (list ctx ...) #'test))]))
+
+(module+ test
+  (define-syntax (check-error-messages stx)
+    (syntax-case stx ()
+      [(_ [test msg] ...)
+       #'(begin (check-exn exn:fail? (λ () test) msg) ...)]))
+  (check-error-messages
+   [(assert (= 2 3))
+    "=: Assertion failed: (= 2 3)"]
+   [(let ([x 3]) (assert (= 2 x)))
+    "=: Assertion failed: (= 2 x)\n arguments:\n  x: 3\n"]
+   [(let ([x 3]) (assert (= 2 3) x))
+    "=: Assertion failed: (= 2 3)\n context:\n  x: 3\n"]
+   [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
+    "and: Assertion failed: (and #f (error shouldn't be raised))"]
+   [(let ([x 2] [y 3]) (assert (= x y)))
+    "=: Assertion failed: (= x y)\n arguments:\n  x: 2\n  y: 3\n"]
+   [(let ([x 2] [y 3]) (assert (= x (or y))))
+    "=: Assertion failed: (= x (or y))\n arguments:\n  x: 2\n"]
+   [(let ([x 2] [y 3]) (assert (or (= x y))))
+    "or: Assertion failed: (or (= x y))"]))
 
 ;; Suppresses any output on the output port (but not on the error port).
 (define-syntax-rule (silent body ...)
