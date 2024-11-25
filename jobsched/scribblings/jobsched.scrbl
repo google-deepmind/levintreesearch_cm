@@ -74,6 +74,80 @@ All definitions exported by the various modules below are also exported by @rack
 See also the one-file example in @tt{examples/server-worker}.
 
 
+@section[#:tag "simple server/worker"]{Simple server / worker}
+
+@defproc[(start-simple-worker [run (-> readable? readable?)]
+                              [#:silent? silent? any/c #f])
+         void?]{
+Like @racket[start-worker] except that @racket[run] accepts the data of the job rather
+than the job. This masks the @racket[job] object.
+
+Note that @racket[start-simple-worker] can be used with both @racket[scheduler-start] and
+@racket[start-simple-server].
+
+ @bold{IMPORTANT:} See the remarks for @racket[start-worker].
+}
+
+@defproc[(start-simple-server [#:worker-file worker-file path-string?]
+                              [#:data-list data-list (listof readable?)]
+                              [#:process-result process-result (procedure-arity-includes/c 2)]
+                              [#:submod-name submod-name symbol? 'worker]
+                              [#:n-workers n-workers integer? (min (length data-list) (processor-count))])
+         void?]{
+
+ Creates and starts a server, like @racket[scheduler-start], but hiding the scheduler and the job
+ objects.
+ The worker is assumed to be in the racket file @racket[worker-file] in the submodule
+ @racket[submod-name]. See @racket[start-simple-worker].
+
+ The workers will receive one element of @racket[data-list] at a time, and return
+ a result to be processed by @racket[process-result].
+
+ The server starts @racket[n-workers] workers in separate OS processes.
+ Refer to @racket[scheduler-start] for @racket[close-workers?].
+ 
+ Note: By contrast to @racket[scheduler-start], the simple server does not allow to
+ add more tasks while it is running.
+
+ @racket[start-simple-server] is essentially a combination of @racket[make-server],
+ @racket[server-start] and @racket[server-close].
+ 
+}
+
+Try the following example with:
+@codeblock|{racket -l- jobsched/examples/server-worker-simple}|
+
+@filebox["server-worker-simple.rkt"
+         (codeblock
+          (file->string (build-path examples "server-worker-simple.rkt")))]
+
+@section[#:tag "server"]{Server}
+
+@defproc[(make-server [#:worker-file worker-file path-string?]
+                      [#:submod-name submod-name symbol? 'worker]
+                      [#:n-workers n-workers (or/c #f integer?) #f])
+         scheduler?]{
+ Returns a new scheduler.
+ See @racket[start-simple-server].
+ If @racket[n-workers] is not @racket[#f], then the workers are started asynchronously.
+}
+
+@defproc[(server-start [sched scheduler?]
+                       [#:data-list data-list (listof readable?)]
+                       [#:process-result process-result (procedure-arity-includes/c 2)]
+                       [#:n-workers n-workers integer? (min (length data-list) (processor-count))]
+                       [#:close-workers? close-workers? any/c #false])
+         void?]{
+ Starts an existing scheduler (likely made with @racket[make-server]).
+ See @racket[start-simple-server].
+ If @racket[close-workers?] is not @racket[#f], then the workers are @emph{not} closed when all jobs
+ are done, so that they can be re-used for subsequent calls of @racket[server-start].
+}
+
+@defproc[(server-close [sched scheduler?]) void?]{
+ If all workers of @racket[sched] to exit gracefully, and blocks until all workers have exited.
+}
+
 @section{Job}
 
 @;{TODO: Define readable}
@@ -93,8 +167,8 @@ The bindings in this section are also exported by @racketmodname[jobsched].
 
  The @racket[cost] field is used by the priority queue of the server.
 
- The @racket[data] field contains @racket[readable?] information that is sent to the worker
- for processing.
+ The @racket[data] field contains @racket[readable?] (in the sense of @racketmodname[racket/fasl])
+ information that is sent to the worker for processing.
 
  The fields @racket[start-ms] and @racket[stop-ms] are set automatically by the server
  when a job is sent to a worker and when the result is received.}
@@ -135,14 +209,14 @@ Returns the number of jobs that have started and not yet finished.}
                           [n-workers exact-nonnegative-integer? #f]
                           [#:before-start before-start (-> scheduler? job? any) void]
                           [#:after-stop after-stop (-> scheduler? job? readable? any) void]
-                          [#:terminate-on-exit? terminate? any/c #t])
+                          [#:close-workers? close-workers? any/c #t])
          void?]{
 Starts a scheduler,
 making sure that @racket[n-workers] racket worker instances are running on the same machine.
 
-If @racket[terminate?] is not @racket[#f], then all worker instances are terminated when
- returning from the function call.
-If @racket[terminate?] is @racket[#f], workers are not terminated when returning from the call,
+If @racket[close-workers?] is not @racket[#f], then all worker instances are closed when
+ returning from the function call, and the workers normally terminate gracefully.
+If @racket[close-workers?] is @racket[#f], workers are not closed when returning from the call,
 so they can be re-used for a subsequent call to @racket[scheduler-start] without starting the
 workers (and the corresponding racket instances) again.
  If @racket[n-workers] is @racket[#f], the number of running worker instances is not changed,
@@ -158,31 +232,6 @@ Both callbacks can be used to add new jobs to the queue, using @racket[scheduler
 
 @defproc[(processor-count) nonnegative-integer?]{
 Re-exported from @racketmodname[racket/future].}
-
-
-@section[#:tag "utils"]{Utilities}
-
-@defmodule[jobsched/utils]
-The bindings in this section are also exported by @racketmodname[jobsched].
-
-@defproc[(make-racket-cmd [path-to-prog path-string?]
-                          [#:submod submod (or/c symbol? #f) #f]
-                          [#:errortrace? errortrace? any/c #f]
-                          [args path-string?]
-                          ...)
-         (listof path-string?)]{
-Creates a command line to call the racket program @racket[path-to-prog].
- If @racket[submod] is specificied, the corresponding submodule is called instead.
- (For example I like to use a @racket[worker] submodule.)
- By default, the @racket[main] submodule is used if available, or the @racket[main] function
- if available.
- The additional command-line arguments @racket[args] are passed to the program,
- which may choose to parse them.
- Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
-}
-
-@defform[(this-file)]{
- 'Returns' the path-string of the enclosing file, or @racket[#f] if there is no enclosing file.}
 
 @section{Worker}
 
@@ -208,48 +257,29 @@ The bindings in this section are also exported by @racketmodname[jobsched].
  is not readable.
 }
 
-@section[#:tag "simple server/worker"]{Simple server / worker}
+@section[#:tag "utils"]{Utilities}
 
-@defproc[(start-simple-worker [run (-> readable? readable?)]
-                              [#:silent? silent? any/c #f])
-         void?]{
-Like @racket[start-worker] except that @racket[run] accepts the data of the job rather
-than the job. This masks the @racket[job] object.
+@defmodule[jobsched/utils]
+The bindings in this section are also exported by @racketmodname[jobsched].
 
-Note that @racket[start-simple-worker] can be used with both @racket[scheduler-start] and
-@racket[start-simple-server].
-
- @bold{IMPORTANT:} See the remarks for @racket[start-worker].
+@defproc[(make-racket-cmd [path-to-prog path-string?]
+                          [#:submod submod (or/c symbol? #f) #f]
+                          [#:errortrace? errortrace? any/c #f]
+                          [args path-string?]
+                          ...)
+         (listof path-string?)]{
+Creates a command line to call the racket program @racket[path-to-prog].
+ If @racket[submod] is specificied, the corresponding submodule is called instead.
+ (For example I like to use a @racket[worker] submodule.)
+ By default, the @racket[main] submodule is used if available, or the @racket[main] function
+ if available.
+ The additional command-line arguments @racket[args] are passed to the program,
+ which may choose to parse them.
+ Note that @racket[path?] arguments are turned automatically into strings by Racket's primitives.
 }
 
-@defproc[(start-simple-server [#:worker-file worker-file path-string?]
-                              [#:data-list data-list (listof readable?)]
-                              [#:process-result process-result (procedure-arity-includes/c 2)]
-                              [#:submod-name submod-name symbol? 'worker]
-                              [#:n-proc n-proc integer? (min (length data-list) (processor-count))])
-         void?]{
-
- Creates and starts a server, like @racket[scheduler-start], but hiding the scheduler and the job
- objects.
- The worker is assumed to be in the racket file @racket[worker-file] in the submodule
- @racket[submod-name]. See @racket[start-simple-worker].
-
- The workers will receive one element of @racket[data-list] at a time, and return
- a result to be processed by @racket[process-result].
-
- The server starts @racket[n-proc] workers in separate OS processes.
-
- Note: By contrast to @racket[scheduler-start], the simple server does not allow to
- add more tasks while it is running.
- 
-}
-
-Try the following example with:
-@codeblock|{racket -l- jobsched/examples/server-worker-simple}|
-
-@filebox["server-worker-simple.rkt"
-         (codeblock
-          (file->string (build-path examples "server-worker-simple.rkt")))]
+@defform[(this-file)]{
+ 'Returns' the path-string of the enclosing file, or @racket[#f] if there is no enclosing file.}
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}
 

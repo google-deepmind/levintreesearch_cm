@@ -29,6 +29,9 @@ limitations under the License.|#
          scheduler-add-job!
          scheduler-start
          processor-count
+         make-server
+         server-start
+         server-close
          start-simple-server)
 
 #|
@@ -61,6 +64,9 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                                (<= (job-index a) (job-index b))
                                (<= ca cb)))))
   (scheduler queue #;K: 0 make-worker #;workers: '() #;worker-idx -1 #;n-active-jobs: 0))
+
+(define (scheduler-n-workers sched)
+  (length (scheduler-workers sched)))
 
 (define (scheduler-next-job-index! g)
   (define K+1 (+ 1 (scheduler-K g)))
@@ -106,6 +112,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   state:ready
   state:running
   state:killed
+  state:closing
   state:closed)
 
 ;; Runs the command line cmd in the OS, and return the `worker`.
@@ -116,21 +123,37 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   (worker name cmd in out err pid handler (current-milliseconds) #;job: #f state:starting))
 
 (define (worker-ask-ready wk)
-  (send-msg ask-ready-message (worker-out wk))
+  (send-msg message:ask-ready (worker-out wk))
   (set-worker-state! wk state:ready?-sent))
 
 (define (worker-close wk)
   (when-verb (printf "Closing worker: ~a\n" wk))
-  (define in (worker-in wk))
+  (check-state-in wk state:ready state:starting)
+  (define in  (worker-in  wk))
   (define out (worker-out wk))
-  (when in  (close-input-port in))
-  (when out (close-output-port out))
-  (set-worker-state! wk state:closed))
+  (send-msg message:close-worker out)
+  (set-worker-state! wk state:closing)
+  ;; Returns the thread, that can be sync'ed with.
+  #;
+  (thread
+   ;; Wait until the port of the worker is closed.
+   (λ ()
+     (println "worker is closing...")
+     (sleep 1)
+     (writeln "Hey!!" out) ; this should fail with port closed?
+     ;; We need to wait for the process to be closed
+     (sync (port-closed-evt out) (port-closed-evt in))
+     (println "worker has closed")
+     (set-worker-state! wk state:closed))))
 
-(define (worker-terminate wk)
+(define (worker-kill wk)
   (when-verb (printf "Terminating worker: ~a\n" wk))
   ((worker-handler wk) 'kill)
   (set-worker-state! wk state:killed)
+  (define in  (worker-in wk))
+  (define out (worker-out wk))
+  (when in  (close-input-port in))
+  (when out (close-output-port out))
   (worker-close wk))
 
 (define-syntax (check-state-in stx)
@@ -156,10 +179,10 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 ;;   status : (or/c 'halted 'timeout)
 ;;   result : any/c
 ;;   Callback called right after a job has finished.
-(define (scheduler-start sched [n-workers #f]
+(define (scheduler-start sched [n-workers (scheduler-n-workers sched)]
                          #:before-start [before-start void]
                          #:after-stop [after-stop void]
-                         #:terminate-on-exit? [terminate? #true])
+                         #:close-workers? [close? #true])
   (define start-seconds (current-seconds))
 
   ;; Check no active job
@@ -184,22 +207,24 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
     (define wk (start-worker worker-idx ((scheduler-make-worker-command sched) worker-idx)))
     (set-workers! (cons wk (get-workers))))
   ;;
-  (define (terminate-one-worker!)
+  (define (close-one-worker!)
     (define wks (get-workers))
     (unless (empty? wks)
-      (worker-terminate (first wks))
+      (worker-kill (first wks))
       (set-workers! (rest wks))))
   
-  (when (and (not n-workers) (= 0 (length (get-workers))))
+  (when (and (= 0 n-workers)
+             (> (scheduler-n-queued-jobs sched) 0))
     (raise-argument-error 'scheduler-start
-                          "n-workers > 0 when no worker is already running"
+                          "n-workers = 0 but jobs are enqueued."
                           n-workers))
 
-  (when n-workers
+  ;; Match the number of workers asked by the user
+  (begin
     ;; The user asks to change the number of workers.
-    (define n-existing-workers (length (get-workers)))
+    (define n-existing-workers (scheduler-n-workers sched))
     ;; First, remove all unnecessary workers
-    (for ([i (in-range n-workers n-existing-workers)]) (terminate-one-worker!))
+    (for ([i (in-range n-workers n-existing-workers)]) (close-one-worker!))
     ;; Finally, top up the number of workers if necessary.
     ;; (yes, n-existing-workers is fine here)
     (for ([i (in-range n-existing-workers n-workers)]) (new-worker!)))
@@ -215,89 +240,129 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
     (when (eq? (worker-state wk) state:ready)
       (worker-ask-ready wk)))
 
-  (let loop ()
-    ;; Find a worker that has output a value.
-    ;; The workers must start by sending out `ready-message`.
-    (define wk (apply sync (get-workers)))
-    (define res (receive-msg (worker-in wk)))
-    (define now (- (current-seconds) start-seconds))
-    (define wk-ready?
-      (cond [(eof-object? res)
-             (when-verb (printf "time: ~a; NOTICE: Worker ~a terminated. Starting a new one.\n"
-                                now (worker-index wk)))
-             (worker-terminate wk)
-             ;; push the job back into the queue (should we make a child node instead?)
-             (define jb (worker-job wk))
-             (when jb
+  (unless (= 0 (scheduler-n-queued-jobs sched))
+    (let loop ()
+      ;; Find a worker that has output a value.
+      ;; The workers must start by sending out `ready-message`.
+      (define wk (apply sync (get-workers)))
+      (define res (receive-msg (worker-in wk)))
+      (define now (- (current-seconds) start-seconds))
+      (define wk-ready?
+        (cond [(eof-object? res)
+               (when-verb (printf "time: ~a; NOTICE: Worker ~a terminated. Starting a new one.\n"
+                                  now (worker-index wk)))
+               (worker-kill wk)
+               ;; push the job back into the queue (should we make a child node instead?)
+               (define jb (worker-job wk))
+               (when jb
+                 (+=n-active-jobs -1)
+                 (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
+               ;; Remove the worker and add a new one.
+               (set-workers! (remove wk (get-workers)))
+               (new-worker!)
+               #false]
+            
+              [(eq? res message:ready)
+               (when-verb (printf "time: ~a; WORKER READY\n" now))
+               (check-state-in wk state:ready?-sent state:starting)
+               (set-worker-state! wk state:ready)
+               #true]
+            
+              [(worker-job wk)
+               (check-state-in wk state:running)
+               ; Processing job result
                (+=n-active-jobs -1)
-               (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
-             ;; Remove the worker and add a new one.
-             (set-workers! (remove wk (get-workers)))
-             (new-worker!)
-             #false]
+               (define jb (worker-job wk))
+               (set-job-stop-ms! jb (current-milliseconds))
+               (when-verb
+                (printf (string-append
+                         "time: ~as; worker: ~a; job: ~a stopped; cost: ~a; took: ~ams\n")
+                        now (worker-index wk) (job-index jb)  (job-cost jb)
+                        (- (job-stop-ms jb) (job-start-ms jb))))
+               (after-stop sched jb res) ; callback
+               (set-worker-job! wk #f)
+               (set-worker-state! wk state:ready)
+               #true]
             
-            [(eq? res ready-message)
-             (when-verb (printf "time: ~a; WORKER READY\n" now))
-             (check-state-in wk state:ready?-sent state:starting)
-             (set-worker-state! wk state:ready)
-             #true]
-            
-            [(worker-job wk)
-             (check-state-in wk state:running)
-             ; Processing job result
-             (+=n-active-jobs -1)
-             (define jb (worker-job wk))
-             (set-job-stop-ms! jb (current-milliseconds))
-             (when-verb
-              (printf (string-append
-                       "time: ~as; worker: ~a; job: ~a stopped; cost: ~a; took: ~ams\n")
-                      now (worker-index wk) (job-index jb)  (job-cost jb)
-                      (- (job-stop-ms jb) (job-start-ms jb))))
-             (after-stop sched jb res) ; callback
-             (set-worker-job! wk #f)
-             (set-worker-state! wk state:ready)
-             #true]
-            
-            [else
-             ;; A worker has sent a message, but the job is #f. This means that a worker sends a
-             ;; message before `start-worker` is able to deal with the worker's outputs.
-             (raise-argument-error 'scheduler-start "A worker message" res)]))
+              [else
+               ;; A worker has sent a message, but the job is #f. This means that a worker sends a
+               ;; message before `start-worker` is able to deal with the worker's outputs.
+               (raise-argument-error 'scheduler-start "A worker message" res)]))
 
-    ;; Send a new job to the worker if it is ready
-    (when wk-ready?
-      (check-state-in wk state:ready)
-      (define jb (scheduler-extract-min! sched))
-      (when jb
-        ;; Give a chance to modify the data in the node, and maybe add sibling nodes
-        (before-start sched jb) ; callback
-        (set-worker-job! wk jb)
-        (+=n-active-jobs 1)
-        (set-job-start-ms! jb (current-milliseconds))
-        (set-worker-state! wk state:running)
-        (send-msg (struct->list jb) (worker-out wk))))
+      ;; Send a new job to the worker if it is ready
+      (when wk-ready?
+        (check-state-in wk state:ready)
+        (define jb (scheduler-extract-min! sched))
+        (when jb
+          ;; Give a chance to modify the data in the node, and maybe add sibling nodes
+          (before-start sched jb) ; callback
+          (set-worker-job! wk jb)
+          (+=n-active-jobs 1)
+          (set-job-start-ms! jb (current-milliseconds))
+          (set-worker-state! wk state:running)
+          (send-msg (struct->list jb) (worker-out wk))))
 
-    (unless (= 0 (scheduler-n-active-jobs sched)) ; also implies queue is empty
-      (loop)))
+      (unless (= 0 (scheduler-n-active-jobs sched)) ; also implies queue is empty
+        (loop))))
 
-  (when terminate? (scheduler-terminate! sched)))
+  (when close? (scheduler-close sched)))
 
   ;; Terminate all workers, close the ports, etc.
-(define (scheduler-terminate! sched)
-  (for-each worker-terminate (scheduler-workers sched))
+(define (scheduler-close sched)
+  (when-verb (printf "Waiting for all ~a workers to close\n" (scheduler-n-workers sched)))
+  (for-each worker-close (scheduler-workers sched))
+  (for ([wk (in-list (scheduler-workers sched))])
+    ((worker-handler wk) 'wait))
+  (when-verb (println "All workers closed."))
   (set-scheduler-workers! sched '()))
 
+;==============;
+;=== Server ===;
+;==============;
+
+(define (make-server #:! worker-file
+                     #:? [submod-name 'worker]
+                     #:? [n-workers #f])
+  (define (make-worker-command _worker-index)
+    (make-racket-cmd worker-file #:submod submod-name))
+  (define sched (make-scheduler make-worker-command))
+  (when n-workers
+    ;; Start the workers
+    (server-start sched #:data-list '() #:process-result (λ (data result) (void))
+                  #:n-workers n-workers
+                  #:close-workers? #false))
+  sched)
+
+;; Workers are NOT closed on exit by default.
+(define (server-start sched
+                      #:! data-list
+                      #:! process-result
+                      #:? [n-workers (scheduler-n-workers sched)]
+                      #:? [close-workers? #false])
+  (for ([data (in-list data-list)])
+    (scheduler-add-job! sched #:data data))
+  (scheduler-start sched
+                   n-workers
+                   #:after-stop (λ (sched jb result) (process-result (job-data jb) result))
+                   #:close-workers? close-workers?))
+
+;; Closes all the workers gracefully.
+(define (server-close sched)
+  (scheduler-close sched))
+
 ;; A simpler server that hides the scheduler and the jobs
-;; All workers are terminated on exit
+;; All workers are closed on exit
 (define (start-simple-server #:! worker-file
                              #:! data-list
                              #:! process-result
                              #:? [submod-name 'worker]
-                             #:? [n-proc (min (length data-list) (processor-count))])
-  (define (make-worker-command _worker-index)
-    (make-racket-cmd worker-file #:submod submod-name))
-  (define sched (make-scheduler make-worker-command))
-  (for ([data (in-list data-list)])
-    (scheduler-add-job! sched #:data data))
-  (scheduler-start sched
-                   n-proc
-                   #:after-stop (λ (sched jb result) (process-result (job-data jb) result))))
+                             ;; n-proc kept for bwd compat. The default value MUST be for n-proc
+                             ;; and not for n-workers.
+                             #:? [n-proc (min (length data-list) (processor-count))]
+                             #:? [n-workers n-proc])
+  (define sched (make-server #:worker-file worker-file #:submod-name submod-name))
+  (server-start sched
+                #:data-list data-list
+                #:process-result process-result
+                #:n-workers n-workers)
+  (server-close sched))

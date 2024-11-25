@@ -13,24 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.|#
 
-(require jobsched)
+(require jobsched
+         racket/runtime-path)
 
-;; This is the command to start a worker.
-;; Creates a new Racket instance.
-(define (make-worker-command _worker-index)
-  (make-racket-cmd "adder-worker.rkt"))
+(define-runtime-path worker-file "adder-worker.rkt")
 
-;; Create a schedule, and tell it how to start a worker
-(define sched (make-scheduler make-worker-command))
+;; List of job data.
+(define data-list
+  (for/list ([num1 (in-range 10)] [num2 (in-range 10)])
+    (list num1 num2)))
 
-;; Schedule some jobs
-(for* ([num1 (in-range 10)] [num2 (in-range 10)])
-  (scheduler-add-job! sched #:data (list num1 num2)))
-
-(define (process-result sched jb result)
-  (match (job-data jb)
+;; What to do once a result is received.
+(define (process-result data result)
+  (match data
     [(list num1 num2)
      (printf "~a + ~a = ~a\n" num1 num2 result)]))
 
-;; Start the server
-(scheduler-start sched (processor-count) #:after-stop process-result)
+;; Start the server and wait for the results.
+(start-simple-server #:worker-file worker-file
+                     #:data-list data-list
+                     #:process-result process-result)

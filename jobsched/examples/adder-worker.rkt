@@ -13,12 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.|#
 
-(require jobsched)
-
-(define (run-job jb)
-  (match (job-data jb)
+(define (run-worker data)
+  (match data
     [(list num1 num2) (+ num1 num2)]
     [else 0]))
 
-(module+ main
-  (start-worker run-job))
+(module+ worker
+  (require jobsched)
+  (start-simple-worker run-worker))

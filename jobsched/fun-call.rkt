@@ -4,6 +4,7 @@
          "worker.rkt"
          racket/match
          racket/dict
+         syntax/location
          define2)
 
 (provide job:fun-call
@@ -29,16 +30,16 @@
                  (list (~? (cons 'kw kw-arg)) ...)
                  (list (~? arg2) ...)))]))
 
-(define (start-fun-call-worker file-path)
-  (define file-path-string
-    (cond [(string? file-path) file-path]
-          [(path? file-path) (path->string file-path)]
+(define (start-fun-call-worker module-path)
+  (define mod-path
+    (cond [(and (string? module-path) (absolute-path? module-path)) (list 'file module-path)]
+          [(module-path? module-path) module-path]
           [else (raise-argument-error 'start-fun-call-worker
-                                      "A string or a path"
-                                      file-path)]))
+                                      "A string or a module path"
+                                      module-path)]))
   (start-simple-worker
    (match-lambda
      [(list JOBSCHED:FUN-CALL fun kw-args pos-args)
-      (define proc (dynamic-require (list 'file file-path-string) fun))
+      (define proc (dynamic-require mod-path fun))
       (keyword-apply/dict proc kw-args pos-args)]
-     [jb (error "illformed job" jb)])))
+     [jb (error "ill-formed job" jb)])))

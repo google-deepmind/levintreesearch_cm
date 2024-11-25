@@ -33,17 +33,21 @@ limitations under the License.|#
 ;; run-job : gbs-node? -> any/c
 ;; The result of `start-worker` must be writeable and readable.
 (define (start-worker run-job #:? [silent? #f])
-  (send-msg ready-message) ; This is important
+  (send-msg message:ready) ; This is important
 
   (let loop ()
     ;; If it's more than a few ms, something's wrong (IO on the server side?)
     (define msg (receive-msg))
     (cond
       [(eof-object? msg)
-       ;; Terminate the worker
+       ;; Terminate the worker.
        (void)]
-      [(eq? msg ask-ready-message)
-       (send-msg ready-message)
+      [(eq? msg message:close-worker)
+       #;(send-msg worker-closing-message)
+       ;; Exit gracefully.
+       (void)]
+      [(eq? msg message:ask-ready)
+       (send-msg message:ready)
        (loop)]
       [else
        (define nd (apply job msg))
@@ -53,19 +57,14 @@ limitations under the License.|#
        ;; but frankly I don't understand why yet.
        (define cust (make-custodian))
        (define res
-         (if silent?
-             (parameterize ([current-custodian cust]
-                            ;; The output port is used for communication with the server,
-                            ;; and must thus be reserved for that, so we temporarily redirect the
-                            ;; output port to the error port
-                            [current-output-port (open-output-nowhere)])
-               (run-job nd))
-             (parameterize ([current-custodian cust]
-                            ;; The output port is used for communication with the server,
-                            ;; and must thus be reserved for that, so we temporarily redirect the
-                            ;; output port to the error port
-                            [current-output-port (current-error-port)])
-               (run-job nd))))
+         (parameterize ([current-custodian cust]
+                        ;; The output port is used for communication with the server,
+                        ;; and must thus be reserved for that, so we temporarily redirect the
+                        ;; output port to the error port.
+                        [current-output-port (if silent?
+                                                 (open-output-nowhere)
+                                                 (current-error-port))])
+           (run-job nd)))
        (custodian-shutdown-all cust)
 
        (send-msg res)
