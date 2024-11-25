@@ -71,9 +71,6 @@ And the second file contains the definition of the worker:
 
 All definitions exported by the various modules below are also exported by @racketmodname[jobsched].
 
-See also the one-file example in @tt{examples/server-worker}.
-
-
 @section[#:tag "simple server/worker"]{Simple server / worker}
 
 @defproc[(start-simple-worker [run (-> readable? readable?)]
@@ -82,8 +79,8 @@ See also the one-file example in @tt{examples/server-worker}.
 Like @racket[start-worker] except that @racket[run] accepts the data of the job rather
 than the job. This masks the @racket[job] object.
 
-Note that @racket[start-simple-worker] can be used with both @racket[scheduler-start] and
-@racket[start-simple-server].
+Note that @racket[start-simple-worker] can be used with @racket[start-simple-server],
+@racket[server-start] and @racket[scheduler-start].
 
  @bold{IMPORTANT:} See the remarks for @racket[start-worker].
 }
@@ -206,7 +203,7 @@ Returns the number of jobs pending in the queue.}
 Returns the number of jobs that have started and not yet finished.}
 
 @defproc[(scheduler-start [sched scheduler?]
-                          [n-workers exact-nonnegative-integer? #f]
+                          [n-workers (or/c #f exact-nonnegative-integer?) #f]
                           [#:before-start before-start (-> scheduler? job? any) void]
                           [#:after-stop after-stop (-> scheduler? job? readable? any) void]
                           [#:close-workers? close-workers? any/c #t])
@@ -228,6 +225,8 @@ The callback @racket[before-start] is called before a job is sent to a worker.
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
 Both callbacks can be used to add new jobs to the queue, using @racket[scheduler-add-job!].
+
+See an example of using @racket[scheduler-start] in @tt{examples/server-worker}.
 }
 
 @defproc[(processor-count) nonnegative-integer?]{
