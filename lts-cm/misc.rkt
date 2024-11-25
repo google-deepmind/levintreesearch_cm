@@ -30,11 +30,13 @@ limitations under the License.|#
 
 (module+ test (require rackunit))
 
-(define (raise-assert-error test-sym syms vals ctx-syms ctx-vals stx-where)
+;; No need to include the test expression as it will be added by racket with the
+;; "in ..." additional message, with which `raise-syntax-error` collaborates.
+(define (raise-assert-error syms vals ctx-syms ctx-vals stx-where)
   (define msg
     (string-append
      ;; No terminating "\n" in case single line, to be followed by " in ..."
-     (format "Assertion failed: ~a" test-sym)
+     "Assertion failed"
      ;; If multiline, terminates with "\n"
      (if (null? syms)
          ""
@@ -57,6 +59,8 @@ limitations under the License.|#
 ;; So `(assert (equal? obj1 obj2))` will print the values of obj1 and obj2 if the assertion fails.
 ;; To avoid printing these, use `(assert (or (equal? obj1 obj2)))`. To avoid printing only one
 ;; of these, use `(assert (equal? obj1 (or obj2)))`
+;; See also:
+;;   https://racket.discourse.group/t/in-macro-is-object-a-macro-or-a-procedure/3323/12?u=laurent.o
 (define-syntax (assert stx)
   (syntax-parse stx
     [(_ (op:id (~or* arg-id:id arg-expr:expr) ...) ctx:expr ...)
@@ -64,11 +68,11 @@ limitations under the License.|#
      (with-syntax ([test (syntax-case stx () [(_ test _ctx ...) #'test])])
        #'(unless (op {~? arg-id arg-expr} ...)
            (raise-assert-error
-            'test '({~? arg-id} ...) (list {~? arg-id} ...) '(ctx ...) (list ctx ...) #'test)))]
+            '({~? arg-id} ...) (list {~? arg-id} ...) '(ctx ...) (list ctx ...) #'test)))]
     ;; When first clause doesn't match
     [(_ test:expr ctx:expr ...)
      #'(unless test
-         (raise-assert-error 'test '() '() '(ctx ...) (list ctx ...) #'test))]))
+         (raise-assert-error '() '() '(ctx ...) (list ctx ...) #'test))]))
 
 (module+ test
   (define-syntax (check-error-messages stx)
@@ -77,19 +81,22 @@ limitations under the License.|#
        #'(begin (check-exn exn:fail? (λ () test) msg) ...)]))
   (check-error-messages
    [(assert (= 2 3))
-    "=: Assertion failed: (= 2 3)"]
+    "=: Assertion failed"]
    [(let ([x 3]) (assert (= 2 x)))
-    "=: Assertion failed: (= 2 x)\n arguments:\n  x: 3\n"]
+    "=: Assertion failed\n arguments:\n  x: 3\n"]
    [(let ([x 3]) (assert (= 2 3) x))
-    "=: Assertion failed: (= 2 3)\n context:\n  x: 3\n"]
+    "=: Assertion failed\n context:\n  x: 3\n"]
    [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
-    "and: Assertion failed: (and #f (error shouldn't be raised))"]
+    "and: Assertion failed"]
    [(let ([x 2] [y 3]) (assert (= x y)))
-    "=: Assertion failed: (= x y)\n arguments:\n  x: 2\n  y: 3\n"]
+    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n"]
    [(let ([x 2] [y 3]) (assert (= x (or y))))
-    "=: Assertion failed: (= x (or y))\n arguments:\n  x: 2\n"]
+    "=: Assertion failed\n arguments:\n  x: 2\n"]
    [(let ([x 2] [y 3]) (assert (or (= x y))))
-    "or: Assertion failed: (or (= x y))"]))
+    "or: Assertion failed"]
+   ;; Check keywords are fine
+   [(let ([f (λ (a #:b b) b)]) (assert (f #t #:b #f)))
+    "f: Assertion failed"]))
 
 ;; Suppresses any output on the output port (but not on the error port).
 (define-syntax-rule (silent body ...)
