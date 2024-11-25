@@ -27,6 +27,7 @@ limitations under the License.|#
 (define-inline (flsqr x)
   (fl* x x))
 
+;; TODO: Use memcopy and flvector->cpointer
 (define (flvector-copy! dest dest-start src [src-start 0] [src-end (flvector-length src)])
   (for ([i (in-naturals src-start)]
         [j (in-range src-start src-end)])

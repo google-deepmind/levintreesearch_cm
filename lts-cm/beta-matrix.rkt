@@ -55,14 +55,14 @@ in the βmatrix.
 (define (make-trajectory act-seq ctxs-seq ctx.idx-vec new-idx!)
   (define n-act-seq (fxvector-length act-seq))
   (define n-ctxs-seq (vector-length ctxs-seq))
-  (assert (= n-act-seq n-ctxs-seq) n-act-seq n-ctxs-seq)
-  (assert (> n-act-seq 0) act-seq)
+  (assert (= n-act-seq n-ctxs-seq))
+  (assert (> n-act-seq 0))
   (define n-mutex (vector-length ctx.idx-vec))
 
   (define idx-seq
     (for/vector #:length n-act-seq ([ctxs (in-vector ctxs-seq)])
       (define n-ctx (fxvector-length ctxs))
-      (assert (= n-ctx n-mutex) n-ctx n-mutex ctxs)
+      (assert (= n-ctx n-mutex) ctxs)
       (for/fxvector #:length n-mutex
         ([ctx (in-fxvector ctxs)]
          [ctx.idx (in-vector ctx.idx-vec)])
@@ -133,7 +133,7 @@ in the βmatrix.
                   (fllog ε-low)))
   (define βmatrix (make-flvector (fx* n-rows n-cols) β0))
 
-  ;; Copy the previous βmatrix in the new one. Context indices are the same.
+  ;; Copy the previous βmatrix in the new one. Common context indices are the same.
   (flvector-copy! βmatrix 0 (CDB-βmatrix cdb))
 
   (define new-cdb (CDB ctx.idx-vec n-rows n-cols βmatrix))

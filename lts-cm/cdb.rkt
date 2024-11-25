@@ -32,13 +32,20 @@ limitations under the License.|#
 (define cdb-file-name "cdb-learn.fasl")
 
 ;; Prefab so as to be serializable
-;; ctx.idx-vec: (vector-of hasheq)
+;; ctx.idx-vec : (or #f (vector-of hasheq))
 ;;   one hasheq per mutex set, translating a context integer to an index in the β matrix
+;; n-rows : int
+;; n-cols : int
+;; βmatrix : flvector
 (struct CDB (ctx.idx-vec n-rows n-cols βmatrix) #:prefab)
 
 ;; This should be `make-empty-cdb`. Also, case is inconsistent :(
 (define (make-cdb n-cols)
   (CDB #f 0 n-cols (make-flvector 0)))
+
+(define (CDB-n-mutex-sets cdb)
+  (and (not (CDB-empty? cdb))
+       (vector-length (CDB-ctx.idx-vec cdb))))
 
 (define (CDB-empty? cdb)
   (= (CDB-n-rows cdb) 0))
