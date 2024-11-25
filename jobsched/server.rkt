@@ -26,6 +26,7 @@ limitations under the License.|#
 (provide (struct-out scheduler)
          make-scheduler
          scheduler-n-queued-jobs
+         scheduler-n-workers
          scheduler-add-job!
          scheduler-start
          processor-count
