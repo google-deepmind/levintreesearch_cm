@@ -27,6 +27,15 @@ limitations under the License.|#
 ;; Returns the list of start indices and the list of end indices.
 ;; We spread the remainder on the first rem segments,
 ;; so that each segment is of size either segment-len or segment-len + 1.
+;; This shares the load more uniformly. For example:
+;; > (partition-range 50 7)
+;; '(43 36 29 22 15 8 0)
+;; '(50 43 36 29 22 15 8)
+;; which has 6 segments of 7 elements, and one segment of 8 elements.
+;; By contrast, a more naive partitioning based on (exact-ceiling (/ len n-segments)) would give:
+;; '(48 40 32 24 16 8 0)
+;; '(50 48 40 32 24 16 8)
+;; which has 6 segments of 8 elements, and 1 segment of 2 elements.
 (define (partition-range len n-segments)
   (define-values (segment-len rem) (quotient/remainder len n-segments))
   (let loop ([start 0] [i 0] [res '()])
@@ -135,5 +144,6 @@ limitations under the License.|#
   ;; n: 128 cpu time: 1898 real time: 32  gc time: 0
   ;; That's a gain of a factor 60(!)
 
+  #;(test-merge (processor-count) 64 32000000)
   )
 
