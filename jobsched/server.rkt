@@ -213,7 +213,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
     (unless (empty? wks)
       (worker-kill (first wks))
       (set-workers! (rest wks))))
-  
+
   (when (and (= 0 n-workers)
              (> (scheduler-n-queued-jobs sched) 0))
     (raise-argument-error 'scheduler-start
@@ -262,13 +262,13 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                (set-workers! (remove wk (get-workers)))
                (new-worker!)
                #false]
-            
+
               [(eq? res message:ready)
                (when-verb (printf "time: ~a; WORKER READY\n" now))
                (check-state-in wk state:ready?-sent state:starting)
                (set-worker-state! wk state:ready)
                #true]
-            
+
               [(worker-job wk)
                (check-state-in wk state:running)
                ; Processing job result
@@ -284,7 +284,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                (set-worker-job! wk #f)
                (set-worker-state! wk state:ready)
                #true]
-            
+
               [else
                ;; A worker has sent a message, but the job is #f. This means that a worker sends a
                ;; message before `start-worker` is able to deal with the worker's outputs.

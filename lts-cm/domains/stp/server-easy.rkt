@@ -28,7 +28,7 @@ limitations under the License.|#
 
 (module+ main
   (require global)
-  
+
   (define-global:boolean *intro?* #t "Display the introduction text?")
 
   ;; These default globals can be overwritten from the command line.
@@ -72,7 +72,7 @@ limitations under the License.|#
     (displayln "\nCan training on simpler problems improve this number?\n")
     (sleep 2)
     (ask-enter))
-  
+
   (let ()
    (server-chain-main
     #:n-actions n-actions

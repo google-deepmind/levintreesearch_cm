@@ -20,7 +20,7 @@
 
   (define data-list
     (for*/list ([x 5] [y 5]) (list x y)))
-  
+
   (start-simple-server
    #:worker-file (this-file)
    #:data-list data-list

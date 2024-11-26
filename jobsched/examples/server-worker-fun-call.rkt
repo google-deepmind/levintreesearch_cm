@@ -18,7 +18,7 @@
 
 (module+ main
   (define n-workers 3)
-  
+
   (start-simple-server
    #:worker-file (this-file) ; where to find the worker (in the 'worker submodule).
    ;; While these look like actual function calls (including the syntax checking

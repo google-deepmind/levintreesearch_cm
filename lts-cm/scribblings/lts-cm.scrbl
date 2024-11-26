@@ -99,7 +99,7 @@ Like @racket[convex-line-search] but the argument @racket[c] controls how close 
  To prevent this quadrupling behaviour, one can force the function @racket[f] to be increasing at
  @racket[xright], for eaxmple with  @racket[(λ (x) (if (< x 2) (/ x) +inf.0))]
  instead of @racket[/].
- 
+
 
 The argument @racket[jac^2], if provided, should be the squared 2-norm of the jacobian (aka the
  gradient or derivative) at @racket[xleft]. This information may be used to speed up the search.

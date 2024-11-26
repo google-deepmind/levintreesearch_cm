@@ -48,7 +48,7 @@
     (for ([tmp (in-dict-keys tmp-h)])
       (check-pred file-exists? tmp))
     (server-close server) ; waits for the workers to terminate gracefully.
-    
+
     (check-equal? (hash-count tmp-h) n-workers)
     (for ([tmp (in-dict-keys tmp-h)])
       (check-false (file-exists? tmp)))))

@@ -102,13 +102,13 @@ Note that @racket[start-simple-worker] can be used with @racket[start-simple-ser
 
  The server starts @racket[n-workers] workers in separate OS processes.
  Refer to @racket[scheduler-start] for @racket[close-workers?].
- 
+
  Note: By contrast to @racket[scheduler-start], the simple server does not allow to
  add more tasks while it is running.
 
  @racket[start-simple-server] is essentially a combination of @racket[make-server],
  @racket[server-start] and @racket[server-close].
- 
+
 }
 
 Try the following example with:
