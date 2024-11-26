@@ -35,7 +35,7 @@ Then install the `levintreesearch_cm` package and all
 its dependencies (all are Apache2 or Apache2/MIT licensed):
 
 ```shell
-raco pkg install --auto --update-deps https://github.com/deepmind/levintreesearch_cm.git
+raco pkg install --auto --update-deps https://github.com/google-deepmind/levintreesearch_cm.git
 ```
 
 ## Quick start
