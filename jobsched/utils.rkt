@@ -47,14 +47,13 @@ limitations under the License.|#
 ;; the pros/cons:
 ;;https://racket.discourse.group/t/how-to-dynamic-require-from-the-enclosing-module/3345/2?u=laurent.o
 ;; Using (this-file) has the benefit of the symmetry with the server's arguments.
+;; Can also use (quote-module-path) for the current submodule.
 (define-syntax-rule (top-module)
   (quote-module-path ".."))
 
 (define message:ask-ready    'JOBSCHED:WORKER-READY?)
 (define message:ready        'JOBSCHED:READY)
 (define message:close-worker 'JOBSCHED:CLOSE-WORKER)
-#;(define worker-closing-message   'JOBSCHED:CLOSE-WORKING)
-
 
 ;; From:
 ;; https://github.com/racket/racket/blob/master/pkgs/racket-benchmarks/tests/
@@ -90,19 +89,12 @@ limitations under the License.|#
                                      ,path-to-prog ,@args))))
 
 ;; Maybe we should use `fasl` here to speed up the transfer, but
-;; whether it's advantages should be checked.
+;; whether it's advantageous should be checked.
 (define (send-msg v [out (current-output-port)])
-  ; Make sure the data we send out is self-delimiting (list, vector, struct, ...)
-  ; but not symbols or numbers) by encapsulating it into a list.
-  #;(write (list v) out)
-  (s-exp->fasl v out)
+  (s-exp->fasl v out #:keep-mutable? #t) ; mutable hashes are faster than immutable ones
   (flush-output out))
 
 (define (receive-msg [in (current-input-port)])
   (if (port-closed? in)
       eof
-      (fasl->s-exp in))
-  #;(define obj (read in))
-  #;(if (pair? obj)
-    (car obj) ; decapsulate
-    obj)) ; could be eof
+      (fasl->s-exp in)))
