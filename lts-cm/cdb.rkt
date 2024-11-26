@@ -47,6 +47,10 @@ limitations under the License.|#
   (and (not (CDB-empty? cdb))
        (vector-length (CDB-ctx.idx-vec cdb))))
 
+(define (CDB-n-params cdb)
+  ; = n-cols × n-rows
+  (flvector-length (CDB-βmatrix cdb)))
+
 (define (CDB-empty? cdb)
   (= (CDB-n-rows cdb) 0))
 
