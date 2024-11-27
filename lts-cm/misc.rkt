@@ -41,13 +41,16 @@ limitations under the License.|#
      (if (null? syms)
          ""
          (apply string-append
-                "\n arguments:\n"
-                (map (λ (sym val) (format "  ~a: ~v\n" sym val)) syms vals)))
+                "\n arguments:"
+                (map (λ (sym val) (format "\n  ~a : ~v" sym val)) syms vals)))
      (if (null? ctx-syms)
          ""
          (apply string-append
-                "\n context:\n"
-                (map (λ (sym val) (format "  ~a: ~v\n" sym val)) ctx-syms ctx-vals)))))
+                "\n context:"
+                (map (λ (sym val) (format "\n  ~a : ~v" sym val)) ctx-syms ctx-vals)))
+     (if (and (null? syms) (null? ctx-syms))
+         ""
+         "\n")))
   (raise-syntax-error #f msg stx-where))
 
 ;; TODO: extract to separate lib and add doc.
@@ -78,20 +81,23 @@ limitations under the License.|#
   (define-syntax (check-error-messages stx)
     (syntax-case stx ()
       [(_ [test msg] ...)
-       #'(begin (check-exn exn:fail? (λ () test) msg) ...)]))
+       #'(begin
+           (check-equal? (with-handlers ([exn:fail? (λ (e) (exn-message e))]) test)
+                         msg)
+           ...)]))
   (check-error-messages
    [(assert (= 2 3))
     "=: Assertion failed"]
    [(let ([x 3]) (assert (= 2 x)))
-    "=: Assertion failed\n arguments:\n  x: 3\n"]
+    "=: Assertion failed\n arguments:\n  x : 3\n"]
    [(let ([x 3]) (assert (= 2 3) x))
-    "=: Assertion failed\n context:\n  x: 3\n"]
+    "=: Assertion failed\n context:\n  x : 3\n"]
    [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
     "and: Assertion failed"]
-   [(let ([x 2] [y 3]) (assert (= x y)))
-    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n"]
+   [(let ([x 2] [y 3] [z 4]) (assert (= x y) z))
+    "=: Assertion failed\n arguments:\n  x : 2\n  y : 3\n context:\n  z : 4\n"]
    [(let ([x 2] [y 3]) (assert (= x (or y))))
-    "=: Assertion failed\n arguments:\n  x: 2\n"]
+    "=: Assertion failed\n arguments:\n  x : 2\n"]
    [(let ([x 2] [y 3]) (assert (or (= x y))))
     "or: Assertion failed"]
    ;; Check keywords are fine
