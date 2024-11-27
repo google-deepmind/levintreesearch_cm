@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.|#
 
 (require syntax/parse/define
-         (for-syntax racket/base)
+         (for-syntax racket/base syntax/parse)
          racket/fixnum
          racket/flonum
          racket/format
@@ -32,26 +32,44 @@ limitations under the License.|#
 
 ;; No need to include the test expression as it will be added by racket with the
 ;; "in ..." additional message, with which `raise-syntax-error` collaborates.
+;;   Note that the "in ..." is different in DrR and on the command line.
+;; Example racket error for `(vector-ref (vector) 2)`:
+;; > (with-handlers ([exn:fail? (λ (e) (exn-message e))]) (vector-ref (vector) 2))
+;; "vector-ref: index is out of range for empty vector\n  index: 2\n  vector: '#()"
+;; 2 spaces before the fields, no space — although these are not field ids.
 (define (raise-assert-error syms vals ctx-syms ctx-vals stx-where)
-  (define msg
+  (define msg-suffix
     (string-append
-     ;; No terminating "\n" in case single line, to be followed by " in ..."
-     "Assertion failed"
-     ;; If multiline, terminates with "\n"
      (if (null? syms)
          ""
          (apply string-append
                 "\n arguments:"
-                (map (λ (sym val) (format "\n  ~a : ~v" sym val)) syms vals)))
-     (if (null? ctx-syms)
+                (map (λ (sym val) (format "\n  ~a: ~v" sym val)) syms vals)))
+     (if (null? (remove* syms ctx-syms))
          ""
          (apply string-append
                 "\n context:"
-                (map (λ (sym val) (format "\n  ~a : ~v" sym val)) ctx-syms ctx-vals)))
+                (map (λ (sym val) (if (memq sym syms) ; remove syms that have already been shown
+                                      ""
+                                      (format "\n  ~a: ~v" sym val)))
+                     ctx-syms ctx-vals)))
      (if (and (null? syms) (null? ctx-syms))
-         ""
-         "\n")))
-  (raise-syntax-error #f msg stx-where))
+         "" ; no terminating "\n" in case single line, to be followed by " in ..."
+         "\n"))) ; multiline
+  (raise-syntax-error #f "Assertion failed" stx-where #f '() msg-suffix))
+
+(begin-for-syntax
+  (define-splicing-syntax-class assert-ctx
+    #:attributes (name val)
+    (pattern v:id
+      #:attr name #'v
+      #:attr val #'v)
+    (pattern (~seq #:with v:id e:expr)
+      #:attr name #'v
+      #:attr val #'e)
+    (pattern e:expr ; sometimes we don't want to bother with a name
+      #:attr name #'e
+      #:attr val #'e)))
 
 ;; TODO: extract to separate lib and add doc.
 ;; Simple assertions with error location and automatic printing of the argument values and context
@@ -66,16 +84,16 @@ limitations under the License.|#
 ;;   https://racket.discourse.group/t/in-macro-is-object-a-macro-or-a-procedure/3323/12?u=laurent.o
 (define-syntax (assert stx)
   (syntax-parse stx
-    [(_ (op:id (~or* arg-id:id arg-expr:expr) ...) ctx:expr ...)
+    [(_ (op:id (~or* arg-id:id arg-expr:expr) ...) ctx:assert-ctx ...)
      #:when (not (syntax-local-value #'op (λ () #f))) ; check if op is not a syntax object like `or`
      (with-syntax ([test (syntax-case stx () [(_ test _ctx ...) #'test])])
        #'(unless (op {~? arg-id arg-expr} ...)
            (raise-assert-error
-            '({~? arg-id} ...) (list {~? arg-id} ...) '(ctx ...) (list ctx ...) #'test)))]
+            '({~? arg-id} ...) (list {~? arg-id} ...) '(ctx.name ...) (list ctx.val ...) #'test)))]
     ;; When first clause doesn't match
-    [(_ test:expr ctx:expr ...)
+    [(_ test:expr ctx:assert-ctx ...)
      #'(unless test
-         (raise-assert-error '() '() '(ctx ...) (list ctx ...) #'test))]))
+         (raise-assert-error '() '() '(ctx.name ...) (list ctx.val ...) #'test))]))
 
 (module+ test
   (define-syntax (check-error-messages stx)
@@ -89,15 +107,17 @@ limitations under the License.|#
    [(assert (= 2 3))
     "=: Assertion failed"]
    [(let ([x 3]) (assert (= 2 x)))
-    "=: Assertion failed\n arguments:\n  x : 3\n"]
+    "=: Assertion failed\n arguments:\n  x: 3\n"]
+   [(let ([x 3]) (assert (= 2 x) x))
+    "=: Assertion failed\n arguments:\n  x: 3\n"] ; no context
    [(let ([x 3]) (assert (= 2 3) x))
-    "=: Assertion failed\n context:\n  x : 3\n"]
+    "=: Assertion failed\n context:\n  x: 3\n"]
    [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
     "and: Assertion failed"]
-   [(let ([x 2] [y 3] [z 4]) (assert (= x y) z))
-    "=: Assertion failed\n arguments:\n  x : 2\n  y : 3\n context:\n  z : 4\n"]
+   [(let ([x 2] [y 3] [z 4]) (assert (= x y) z #:with l '(a b c)))
+    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n context:\n  z: 4\n  l: '(a b c)\n"]
    [(let ([x 2] [y 3]) (assert (= x (or y))))
-    "=: Assertion failed\n arguments:\n  x : 2\n"]
+    "=: Assertion failed\n arguments:\n  x: 2\n"]
    [(let ([x 2] [y 3]) (assert (or (= x y))))
     "or: Assertion failed"]
    ;; Check keywords are fine
