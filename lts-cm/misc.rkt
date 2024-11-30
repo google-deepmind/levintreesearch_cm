@@ -114,8 +114,8 @@ limitations under the License.|#
     "=: Assertion failed\n context:\n  x: 3\n"]
    [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
     "and: Assertion failed"]
-   [(let ([x 2] [y 3] [z 4]) (assert (= x y) z #:with l '(a b c)))
-    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n context:\n  z: 4\n  l: '(a b c)\n"]
+   [(let ([x 2] [y 3] [z 4]) (assert (= x y) z #:with l (+ 2 3 4))) ; allows for exprs within assert
+    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n context:\n  z: 4\n  l: 9\n"]
    [(let ([x 2] [y 3]) (assert (= x (or y))))
     "=: Assertion failed\n arguments:\n  x: 2\n"]
    [(let ([x 2] [y 3]) (assert (or (= x y))))

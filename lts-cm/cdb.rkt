@@ -32,12 +32,12 @@ limitations under the License.|#
 (define cdb-file-name "cdb-learn.fasl")
 
 ;; Prefab so as to be serializable
-;; ctx.idx-vec : (or #f (vector-of hasheq))
+;; mutex-dicts : (or #f (vector-of hasheq))
 ;;   one hasheq per mutex set, translating a context integer to an index in the β matrix
 ;; n-rows : int
 ;; n-cols : int
 ;; βmatrix : flvector
-(struct CDB (ctx.idx-vec n-rows n-cols βmatrix) #:prefab)
+(struct CDB (mutex-dicts n-rows n-cols βmatrix) #:prefab)
 
 ;; This should be `make-empty-cdb`. Also, case is inconsistent :(
 (define (make-cdb n-cols)
@@ -45,7 +45,7 @@ limitations under the License.|#
 
 (define (CDB-n-mutex-sets cdb)
   (and (not (CDB-empty? cdb))
-       (vector-length (CDB-ctx.idx-vec cdb))))
+       (vector-length (CDB-mutex-dicts cdb))))
 
 (define (CDB-n-params cdb)
   ; = n-cols × n-rows
@@ -61,11 +61,11 @@ limitations under the License.|#
 
 (define (load-cdb file)
   (define cdb (call-with-input-file* file (λ (in) (fasl->s-exp in #:datum-intern? #f))))
-  (match-define (CDB ctx.idx-vec n-rows n-cols βmatrix) cdb)
+  (match-define (CDB mutex-dicts n-rows n-cols βmatrix) cdb)
   (assert (and (integer? n-rows) (>= n-rows 0)) n-rows)
   (assert (and (integer? n-cols) (>= n-cols 0)) n-cols)
   (assert (flvector? βmatrix))
   (when (> n-rows 0)
-    (assert (and (vector? ctx.idx-vec) (for/and ([h (in-vector ctx.idx-vec)]) (hash? h)))
-            ctx.idx-vec))
+    (assert (and (vector? mutex-dicts) (for/and ([h (in-vector mutex-dicts)]) (hash? h)))
+            mutex-dicts))
   cdb)

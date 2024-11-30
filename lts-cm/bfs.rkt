@@ -161,16 +161,16 @@ limitations under the License.|#
       (make-fxvector n)))
 
   (define get-contexts
-    (if (CDB-ctx.idx-vec cdb)
-        (λ (domain-state nd)
-          (get-contexts/setter domain-state nd (make-fxvector-setter ctxs))
-          ctxs)
+    (if (CDB-empty? cdb)
         ;; There is no parameter matrix βmatrix, so for efficiency we can
         ;; skip obtain the contexts. This can be significantly faster on
         ;; the first iteration.
         (λ (domain-state nd)
           ;; The contents of ctxs does not matter since get-pconds will
           ;; return the uniform vector anyway.
+          ctxs)
+        (λ (domain-state nd)
+          (get-contexts/setter domain-state nd (make-fxvector-setter ctxs))
           ctxs)))
 
   (define visited (visitor-make-hash))

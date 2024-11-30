@@ -52,12 +52,12 @@ in the βmatrix.
 ;;
 ;; Notice: If ctx->idx has side effects (like hash-ref! for example),
 ;; then `make-trajectory` may have side effects.
-(define (make-trajectory act-seq ctxs-seq ctx.idx-vec new-idx!)
+(define (make-trajectory act-seq ctxs-seq mutex-dicts new-idx!)
   (define n-act-seq (fxvector-length act-seq))
   (define n-ctxs-seq (vector-length ctxs-seq))
   (assert (= n-act-seq n-ctxs-seq))
   (assert (> n-act-seq 0))
-  (define n-mutex (vector-length ctx.idx-vec))
+  (define n-mutex (vector-length mutex-dicts))
 
   (define idx-seq
     (for/vector #:length n-act-seq ([ctxs (in-vector ctxs-seq)])
@@ -65,7 +65,7 @@ in the βmatrix.
       (assert (= n-ctx n-mutex) ctxs)
       (for/fxvector #:length n-mutex
         ([ctx (in-fxvector ctxs)]
-         [ctx.idx (in-vector ctx.idx-vec)])
+         [ctx.idx (in-vector mutex-dicts)])
         (hash-ref! ctx.idx ctx new-idx!))))
 
   (trajectory n-act-seq act-seq idx-seq 0.))
@@ -85,9 +85,9 @@ in the βmatrix.
 
   ;; Number of mutex sets
   (define n-mutex
-    (if (CDB-ctx.idx-vec cdb)
+    (if (CDB-mutex-dicts cdb)
         ;; If the old cdb already has a vector of ctx.idx, use it
-        (vector-length (CDB-ctx.idx-vec cdb))
+        (vector-length (CDB-mutex-dicts cdb))
         ;; otherwise, try to guess the number from the trajectories
         (and (> n-traj 0)
              ;; get the number of contexts from the first action step in the first
@@ -97,11 +97,11 @@ in the βmatrix.
                          #:unless (= 0 (vector-length ctxs-seq)))
                (fxvector-length (vector-ref ctxs-seq 0))))))
 
-  (define ctx.idx-vec
+  (define mutex-dicts
     ;; Create one hasheq per mutex set
-    (if (CDB-ctx.idx-vec cdb)
+    (if (CDB-mutex-dicts cdb)
         ;; Copy the ctx->idx mappings from the old cdb
-        (for/vector ([ctx.idx (in-vector (CDB-ctx.idx-vec cdb))])
+        (for/vector ([ctx.idx (in-vector (CDB-mutex-dicts cdb))])
           (hash-copy ctx.idx))
         ;; Create fresh mappings
         (and n-mutex
@@ -123,7 +123,7 @@ in the βmatrix.
      (for/list ([act+ctxs-seq (in-vector act+ctxs-seqs)]
                 #:do [(define acts (vector-ref act+ctxs-seq 0))]
                 #:unless (= 0 (fxvector-length acts)))
-       (make-trajectory acts (vector-ref act+ctxs-seq 1) ctx.idx-vec new-idx!))))
+       (make-trajectory acts (vector-ref act+ctxs-seq 1) mutex-dicts new-idx!))))
 
   ;; When optimizing on the β-simplex, the sum of the βs tends to (A-1)ln ε, so
   ;; we'd better start at β_{c, a} = (A-1)/A × ln ε directly.
@@ -136,19 +136,19 @@ in the βmatrix.
   ;; Copy the previous βmatrix in the new one. Common context indices are the same.
   (flvector-copy! βmatrix 0 (CDB-βmatrix cdb))
 
-  (define new-cdb (CDB ctx.idx-vec n-rows n-cols βmatrix))
+  (define new-cdb (CDB mutex-dicts n-rows n-cols βmatrix))
 
   (values new-cdb trajectories))
 
 (define (make-cdb-predictor cdb)
   (define n-actions     (CDB-n-cols      cdb))
-  (define ctx.idx-vec   (CDB-ctx.idx-vec cdb)) ; ctx code to index in βmatrix converter
+  (define mutex-dicts   (CDB-mutex-dicts cdb)) ; ctx code to index in βmatrix converter
   (define βmatrix       (CDB-βmatrix     cdb))
   (define uniform-flvec (make-flvector n-actions (fl/ (fx->fl n-actions))))
   (define vec-out       (make-flvector n-actions 0.))
   (define idxs          #f)
 
-  (if (not ctx.idx-vec)
+  (if (not mutex-dicts)
       (λ (ctxs ε-mix #:? [default-βs #f]) uniform-flvec)
       (λ (ctxs ε-mix #:? default-βs)
         (unless idxs
@@ -167,7 +167,7 @@ in the βmatrix.
         ;; βmatrix is created.
         (define n-idxs 0)
         (for ([ctx (in-fxvector ctxs)]
-              [ctx.idx (in-vector ctx.idx-vec)])
+              [ctx.idx (in-vector mutex-dicts)])
           (define idx (hash-ref ctx.idx ctx #f))
           (when idx
             (fxvector-set! idxs n-idxs idx)
