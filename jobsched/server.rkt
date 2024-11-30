@@ -129,7 +129,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
 (define (worker-close wk)
   (when-verb (printf "Closing worker: ~a\n" wk))
-  (check-state-in wk state:ready state:starting)
+  (check-state-in wk state:ready state:starting state:ready?-sent)
   (define in  (worker-in  wk))
   (define out (worker-out wk))
   (send-msg message:close-worker out)
@@ -237,7 +237,9 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   ;; (We could actually bypass this sync/ack and just send them jobs directly,
   ;; but this is simple).
   (for ([wk (in-list (get-workers))])
-    (check-state-in wk state:ready state:starting)
+    (check-state-in wk state:ready state:starting state:ready?-sent)
+    ;; If starting or ready?-sent, the worker will already send a reply,
+    ;; otherwise we need to ask it again if ready.
     (when (eq? (worker-state wk) state:ready)
       (worker-ask-ready wk)))
 
