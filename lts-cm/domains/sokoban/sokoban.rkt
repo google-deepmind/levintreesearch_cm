@@ -200,40 +200,40 @@ limitations under the License.|#
 ;=== Contexts ===;
 ;================;
 
-(define (collect-contexts soko sstate set-next-context!)
+(define (collect-contexts soko sstate collect-context!)
   (define row0 (sokoban-player-row soko))
   (define col0 (sokoban-player-col soko))
   ;; Include which action would lead to undoing the last action.
   ;; When pushing a box, no such action exists.
-  (set-next-context! (sokoban-undo-action soko)) ; no encoding necessary since single value
+  (collect-context! (sokoban-undo-action soko)) ; no encoding necessary since single value
 
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 4 #:col-dist 4
                                      #:row-span 3 #:col-span 3
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall)
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 3 #:col-dist 2
                                      #:row-span 4 #:col-span 2
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall)
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 2 #:col-dist 3
                                      #:row-span 2 #:col-span 4
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall)
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 2 #:col-dist 2
                                      #:row-span 2 #:col-span 2
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall)
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 1 #:col-dist 1
                                      #:row-span 1 #:col-span 2
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall)
-  (board-relative-tiling/setter soko
-                                     #:setter! set-next-context!
+  (board-relative-tiling/collect soko
+                                     #:collect! collect-context!
                                      #:row-dist 1 #:col-dist 1
                                      #:row-span 2 #:col-span 1
                                      #:row row0 #:col col0 #:max-value max-cell #:pad-value wall))
@@ -297,7 +297,7 @@ limitations under the License.|#
 
 ;; To check the number of mutex sets:
 (module+ drracket
-  (require lts-cm/context-setter)
+  (require lts-cm/collector)
   (let ()
     (define s
       "\
@@ -305,7 +305,7 @@ limitations under the License.|#
 # $ $ @$. #
 ###########")
     (define soko1 (string->sokoban s))
-    (define setter (make-list-setter))
+    (define setter (make-list-collector))
     (collect-contexts soko1 #f setter)
     (printf "Number of contexts: ~a\n" (length (setter)))))
 

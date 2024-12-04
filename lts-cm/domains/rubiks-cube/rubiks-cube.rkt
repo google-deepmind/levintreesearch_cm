@@ -200,7 +200,7 @@ Every rotation changes the orientation from 0 to 1 or conversely.
    ;; In pratice, 104256 contexts are create (very quickly, then staves off)
    (combinations (range n-cubies) 2)))
 
-(define (collect-contexts cub nd set-next-context!)
+(define (collect-contexts cub nd collect-context!)
   (define bts (cube-bytes cub))
 
   ;; (* n-cubies 3) is wasteful, it should be 24=8*3=12*2 instead, but position and orientation
@@ -208,10 +208,10 @@ Every rotation changes the orientation from 0 to 1 or conversely.
   (define max-val (- (* n-cubies 3) 1))
   (for ([idxs (in-vector state-contexts)])
     ;; Get the values of the indices idxs in bts, and encode them into a single fixnum
-    (set-next-context! (bytes-context/encode bts idxs #:max-value max-val)))
+    (collect-context! (bytes-context/encode bts idxs #:max-value max-val)))
 
   ;;  Last action
-  (set-next-context!
+  (collect-context!
    ;; No encoding necessary since there's only one number
    (bfs-node-last-action nd #:no-action n-actions)))
 

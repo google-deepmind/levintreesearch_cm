@@ -26,7 +26,7 @@ limitations under the License.|#
 
 #|
 The βmatrix is just a long matrix (actually a vector) of all the flonum parameters.
-Context codes (calculated in get-context/setter) are turned into indices in the βmatrix
+Context codes (calculated in collect-contexts) are turned into indices in the βmatrix
 using a hash (kept in the CDB).
 
 This allows to have sparse context codes (still within fixnums) and a dense βmatrix.

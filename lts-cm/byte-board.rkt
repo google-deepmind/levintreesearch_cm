@@ -91,22 +91,22 @@ limitations under the License.|#
 ;================;
 
 ;; brd : byte-board
-;; setter! : fixnum -> any/c
+;; collect! : fixnum -> any/c
 ;; max-value : byte ; maximum value that a cell of the board can take
 ;; pad-value : byte ; value assigned to cells outside of the board.
 ;;
 ;; For each tile of the tiling (one tile is one mutex set),
 ;; calculates a context code base on values of the cells in the board
-;; and calls `setter!` with this code.
-;; `setter!` is meant to store the context code in some external structure
+;; and calls `collect!` with this code.
+;; `collect!` is meant to store the context code in some external structure
 ;; (or ignore it).
 ;; A tile is a rectangle of size row-span × col-span, whose top-left corner
 ;; is at some distance (bounded by row-dist, col-dist) from (row0, col0).
 ;;
-;; Has side effects if `setter!` has side effects.
+;; Has side effects if `collect!` has side effects.
 ;; The function returns (void).
-(define (board-relative-tiling/setter brd
-                                      #:! setter!
+(define (board-relative-tiling/collect brd
+                                      #:! collect!
                                       #:row row0 #:col col0
                                       #:? [max-value 255] #:? [pad-value max-value]
                                       #:? [row-dist 1] #:? [col-dist row-dist]
@@ -130,4 +130,4 @@ limitations under the License.|#
               (board-ref brd r c) ; could be inlined for efficiency
               pad-value))
         (natural-encode1 x (+ max-value 1) enc)))
-    (setter! enc)))
+    (collect! enc)))

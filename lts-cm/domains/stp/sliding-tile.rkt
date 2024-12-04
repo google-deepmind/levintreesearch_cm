@@ -114,33 +114,33 @@ limitations under the License.|#
 ;=== Contexts ===;
 ;================;
 
-(define (collect-contexts stp nd set-next-context!)
+(define (collect-contexts stp nd collect-context!)
   (define row0 (stp-state-row0 stp))
   (define col0 (stp-state-col0 stp))
   (define N² (* (board-n-rows stp) (board-n-cols stp)))
   (define bts (board-vec stp))
 
-  (board-relative-tiling/setter stp
-                                #:setter! set-next-context!
+  (board-relative-tiling/collect stp
+                                #:collect! collect-context!
                                 #:row row0 #:col col0 #:pad-value N² #:max-value N²
                                 #:row-dist 3 #:col-dist 3 ; 5 possible positions for row
                                 #:row-span 2 #:col-span 2) ; 4 cells of 25+1 possibilities
-  (board-relative-tiling/setter stp
-                                #:setter! set-next-context!
+  (board-relative-tiling/collect stp
+                                #:collect! collect-context!
                                 #:row row0 #:col col0 #:pad-value N² #:max-value N²
                                 #:row-dist 2 #:col-dist 2 ; 3 possible positions for row
                                 #:row-span 2 #:col-span 1) ; 2 cells of 25+1 possibilities
-  (board-relative-tiling/setter stp
-                                #:setter! set-next-context!
+  (board-relative-tiling/collect stp
+                                #:collect! collect-context!
                                 #:row row0 #:col col0 #:pad-value N² #:max-value N²
                                 #:row-dist 2 #:col-dist 2
                                 #:row-span 1 #:col-span 2)
-  (board-relative-tiling/setter stp
-                                #:setter! set-next-context!
+  (board-relative-tiling/collect stp
+                                #:collect! collect-context!
                                 #:row row0 #:col col0 #:pad-value N² #:max-value N²
                                 #:row-dist 2 #:col-dist 2
                                 #:row-span 1 #:col-span 1)
-  (set-next-context!
+  (collect-context!
    ;; No encoding necessary since there's only one number
    (bfs-node-last-action nd #:no-action n-actions)))
 

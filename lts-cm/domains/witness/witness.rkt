@@ -16,7 +16,7 @@ limitations under the License.|#
 (require lts-cm/bfs
          lts-cm/encode
          lts-cm/byte-board
-         lts-cm/context-setter
+         lts-cm/collector
          racket/dict
          racket/string
          racket/match
@@ -194,7 +194,7 @@ limitations under the License.|#
 (define pad-dot HV_SEG)
 (define max-dot (max dots-max-value pad-dot))
 
-(define (collect-contexts wit sstate set-next-context!)
+(define (collect-contexts wit sstate collect-context!)
   (match-define (witness colors dots row0 col0 rowg colg) wit)
 
   ;; Relative tiling of the two boards (dots and colors) at the same time, as if they
@@ -202,17 +202,17 @@ limitations under the License.|#
   ;; It might be simpler just to copy the whole thing into a single board though...
   (define (set-witness-relative-tiling-contexts! #:! row-dist #:! col-dist #:! row-span #:! col-span)
     ;; Collect the codes for the dots board only
-    (define dots-codes (make-list-setter))
-    (board-relative-tiling/setter
+    (define dots-codes (make-list-collector))
+    (board-relative-tiling/collect
           dots
-          #:setter! dots-codes
+          #:collect! dots-codes
           #:row-dist row-dist #:col-dist col-dist #:row-span row-span #:col-span col-span
           #:row row0 #:col col0 #:max-value max-dot #:pad-value pad-dot)
     ;; Collect the codes for the colors board only
-    (define colors-codes (make-list-setter))
-    (board-relative-tiling/setter
+    (define colors-codes (make-list-collector))
+    (board-relative-tiling/collect
      colors
-     #:setter! colors-codes
+     #:collect! colors-codes
      #:row-dist row-dist #:col-dist col-dist #:row-span row-span #:col-span col-span
      #:row row0 #:col col0 #:max-value pad-color #:pad-value pad-color)
     ;; Number of possible codes for each of the colors-codes below.
@@ -220,10 +220,10 @@ limitations under the License.|#
     ;; Merge the codes 2 by 2
     (for ([dots-code   (in-list (dots-codes))]
           [colors-code (in-list (colors-codes))])
-      (set-next-context! (naturals->fixnum* dots-code [colors-code color-code-size]))))
+      (collect-context! (naturals->fixnum* dots-code [colors-code color-code-size]))))
 
   ;; Encode the position of the goal
-  (set-next-context! (naturals->fixnum* [rowg (board-n-rows dots)] [colg (board-n-cols dots)]))
+  (collect-context! (naturals->fixnum* [rowg (board-n-rows dots)] [colg (board-n-cols dots)]))
 
   (set-witness-relative-tiling-contexts! #:row-dist 4 #:col-dist 4 #:row-span 3 #:col-span 3)
   (set-witness-relative-tiling-contexts! #:row-dist 4 #:col-dist 4 #:row-span 2 #:col-span 2)
@@ -294,10 +294,10 @@ limitations under the License.|#
 
   (let ()
     (define wit (spec->witness spec1))
-    (define set-next-context! (make-list-setter))
-    (collect-contexts wit #f set-next-context!)
-    (printf "#contexts: ~a\n" (length (set-next-context!)))
-    (writeln (set-next-context!))
+    (define collect-context! (make-list-collector))
+    (collect-contexts wit #f collect-context!)
+    (printf "#contexts: ~a\n" (length (collect-context!)))
+    (writeln (collect-context!))
     (define acts '(down right down left down right right up
                         left ; illegal move
                         up left ; illegal

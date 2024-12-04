@@ -18,7 +18,7 @@ limitations under the License.|#
          racket/fixnum
          "beta-matrix.rkt"
          "cdb.rkt"
-         "context-setter.rkt"
+         "collector.rkt"
          "flonum.rkt"
          "misc.rkt"
          "policy.rkt"
@@ -85,8 +85,8 @@ limitations under the License.|#
             ([act (in-list act-seq)])
     (define-values (domain-state _) (apply values (bfs-node-state nd)))
     (define get-vec (if ctx-vec
-                        (make-fxvector-setter ctx-vec)
-                        (make-fxvector-setter/auto)))
+                        (make-fxvector-collector ctx-vec)
+                        (make-fxvector-collector/auto)))
     (collect-contexts domain-state nd get-vec)
     ;; We need to copy the vector otherwise it gets shared
     (define ctxs (if ctx-vec (fxvector-copy ctx-vec) (get-vec)))
@@ -170,7 +170,7 @@ limitations under the License.|#
           ;; return the uniform vector anyway.
           ctxs)
         (λ (domain-state nd)
-          (collect-contexts domain-state nd (make-fxvector-setter ctxs))
+          (collect-contexts domain-state nd (make-fxvector-collector ctxs))
           ctxs)))
 
   (define visited (visitor-make-hash))

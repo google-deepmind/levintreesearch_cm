@@ -41,8 +41,8 @@ so a tiling this big is not possible.
     or the coding is very sparse and could be made more dense.
 |#
 
-;; A simple setter that returns the list of contexts.
-(define (make-list-setter)
+;; A simple collector that returns the list of contexts.
+(define (make-list-collector)
   (define l '())
   (case-lambda
     [() (reverse l)]
@@ -51,18 +51,18 @@ so a tiling this big is not possible.
 ;; Returns a procedure `fxvector-encode!` that, once called, encodes the given number within the
 ;; vector at the current index, along with its index in the vector, and moves the current index.
 ;; `fxvector-encode!` must not be called more times than the length of the vector.
-;; Meant to be used with `get-context/setter`.
-(define (make-fxvector-setter vec)
+;; Meant to be used with `collect-contexts`.
+(define (make-fxvector-collector vec)
   (define i 0)
   (λ (v)
     (fxvector-set! vec i v)
     (++ i)))
 
-;; Returns a procedure to be used with context setters (with one argument),
+;; Returns a procedure to be used with context collectors (with one argument),
 ;; and can be called afterwards with 0 arguments to retreive the fxvector of contexts.
-;; Slower than `make-fxvector-setter` as it allocates a vector and a list.
-;; Can be used for debugging `get-context/setter`.
-(define (make-fxvector-setter/auto)
+;; Slower than `make-fxvector-collector` as it allocates a vector and a list.
+;; Can be used for debugging `collect-contexts`.
+(define (make-fxvector-collector/auto)
   (define ctxs '())
   ;; We also encode the position in the vector, that is, the mutex set index.
   (case-lambda
