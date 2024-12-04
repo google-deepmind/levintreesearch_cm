@@ -114,7 +114,7 @@ limitations under the License.|#
 ;=== Contexts ===;
 ;================;
 
-(define (get-contexts/setter stp nd set-next-context!)
+(define (collect-contexts stp nd set-next-context!)
   (define row0 (stp-state-row0 stp))
   (define col0 (stp-state-col0 stp))
   (define N² (* (board-n-rows stp) (board-n-cols stp)))
@@ -185,7 +185,7 @@ limitations under the License.|#
 
 (define solve-stp
   (make-bfs-solver #:n-actions n-actions
-                   #:get-contexts/setter get-contexts/setter
+                   #:collect-contexts collect-contexts
                    #:get-visited-key get-visited-key
                    #:solution? stp-solution?
                    #:do-action do-action))

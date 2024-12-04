@@ -194,7 +194,7 @@ limitations under the License.|#
 (define pad-dot HV_SEG)
 (define max-dot (max dots-max-value pad-dot))
 
-(define (get-contexts/setter wit sstate set-next-context!)
+(define (collect-contexts wit sstate set-next-context!)
   (match-define (witness colors dots row0 col0 rowg colg) wit)
 
   ;; Relative tiling of the two boards (dots and colors) at the same time, as if they
@@ -250,7 +250,7 @@ limitations under the License.|#
 
 (define solve-witness
   (make-bfs-solver #:n-actions n-actions
-                   #:get-contexts/setter get-contexts/setter
+                   #:collect-contexts collect-contexts
                    #:get-visited-key get-visited-key
                    #:solution? witness-solution?
                    #:do-action do-action))
@@ -295,7 +295,7 @@ limitations under the License.|#
   (let ()
     (define wit (spec->witness spec1))
     (define set-next-context! (make-list-setter))
-    (get-contexts/setter wit #f set-next-context!)
+    (collect-contexts wit #f set-next-context!)
     (printf "#contexts: ~a\n" (length (set-next-context!)))
     (writeln (set-next-context!))
     (define acts '(down right down left down right right up

@@ -25,7 +25,7 @@ Contexts are encoded into fixnums (usually 2^60-1 values) to be used as
 keys to a hasheq for efficiency.
 
 The number of mutex set is assumed to be constant, but does not need
-to be specified by the domain's `get-contexts/setter`.
+to be specified by the domain's `collect-contexts`.
 
 This means that when designing the context encodings, one must
 make sure that the codes fit within a fixnum.

@@ -200,7 +200,7 @@ Every rotation changes the orientation from 0 to 1 or conversely.
    ;; In pratice, 104256 contexts are create (very quickly, then staves off)
    (combinations (range n-cubies) 2)))
 
-(define (get-contexts/setter cub nd set-next-context!)
+(define (collect-contexts cub nd set-next-context!)
   (define bts (cube-bytes cub))
 
   ;; (* n-cubies 3) is wasteful, it should be 24=8*3=12*2 instead, but position and orientation
@@ -224,7 +224,7 @@ Every rotation changes the orientation from 0 to 1 or conversely.
 
 (define solve-cube
   (make-bfs-solver #:n-actions n-actions
-                   #:get-contexts/setter get-contexts/setter
+                   #:collect-contexts collect-contexts
                    #:get-visited-key get-visited-key
                    #:solution? cube-solution?
                    #:do-action do-action))

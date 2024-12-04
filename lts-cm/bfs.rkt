@@ -69,7 +69,7 @@ limitations under the License.|#
 ;;  of probabilities and contexts, and to act-seq.
 (define (replay-actions domain-root-state
                         #:! do-action
-                        #:! get-contexts/setter
+                        #:! collect-contexts
                         #:? [ctx-vec #f]
                         #:! act-seq
                         #:! cdb
@@ -87,7 +87,7 @@ limitations under the License.|#
     (define get-vec (if ctx-vec
                         (make-fxvector-setter ctx-vec)
                         (make-fxvector-setter/auto)))
-    (get-contexts/setter domain-state nd get-vec)
+    (collect-contexts domain-state nd get-vec)
     ;; We need to copy the vector otherwise it gets shared
     (define ctxs (if ctx-vec (fxvector-copy ctx-vec) (get-vec)))
     (define pconds           (get-pconds ctxs ε-mix))
@@ -133,9 +133,9 @@ limitations under the License.|#
     (bfs-node depth 1/π '() (list root-state #f) (cost-function 1/π depth))))
 
 ;; Returns an assoc, which is read/write-able
-;; get-contexts/setter: MUST be functional, apart from the setter.
+;; collect-contexts: MUST be functional, apart from the setter.
 (define (best-first-search #:! root-state
-                           #:! get-contexts/setter
+                           #:! collect-contexts
                            #:! cdb
                            #:! ε-mix
                            #:? [cost-function d/π-cost-function]
@@ -157,7 +157,7 @@ limitations under the License.|#
       ;; We need to find out the number of mutex sets
       ;; so as to create a vector of the correct size.
       ;; NOTICE: Assumes that the number of mutex sets is always the same during the whole search!
-      (get-contexts/setter root-state root (λ _ (++ n)))
+      (collect-contexts root-state root (λ _ (++ n)))
       (make-fxvector n)))
 
   (define get-contexts
@@ -170,7 +170,7 @@ limitations under the License.|#
           ;; return the uniform vector anyway.
           ctxs)
         (λ (domain-state nd)
-          (get-contexts/setter domain-state nd (make-fxvector-setter ctxs))
+          (collect-contexts domain-state nd (make-fxvector-setter ctxs))
           ctxs)))
 
   (define visited (visitor-make-hash))
@@ -207,7 +207,7 @@ limitations under the License.|#
            (define-values (_nd pcond-seq ctxs-seq)
              (replay-actions root-state
                              #:do-action do-action
-                             #:get-contexts/setter get-contexts/setter
+                             #:collect-contexts collect-contexts
                              #:ctx-vec ctxs
                              #:cdb cdb
                              #:ε-mix ε-mix
@@ -274,20 +274,20 @@ limitations under the License.|#
 
 ;; Returns a domain-specific bfs solver
 (define ((make-bfs-solver #:! n-actions
-                          #:! get-contexts/setter
+                          #:! collect-contexts
                           #:! get-visited-key
                           #:! solution?
                           #:! do-action)
          ;; Arguments that the domain-specific solver takes:
          root-state
          #:? [cdb (make-cdb n-actions)]
-         #:? [get-contexts/setter get-contexts/setter]
+         #:? [collect-contexts collect-contexts]
          #:? [visited-hash? #t]
          #:? [budget +inf.0]
          #:? [ε-mix (*ε-mix*)])
 
   (best-first-search #:root-state root-state
-                     #:get-contexts/setter get-contexts/setter
+                     #:collect-contexts collect-contexts
                      #:cdb cdb
                      #:ε-mix ε-mix
                      #:do-action do-action

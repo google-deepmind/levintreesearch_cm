@@ -200,7 +200,7 @@ limitations under the License.|#
 ;=== Contexts ===;
 ;================;
 
-(define (get-contexts/setter soko sstate set-next-context!)
+(define (collect-contexts soko sstate set-next-context!)
   (define row0 (sokoban-player-row soko))
   (define col0 (sokoban-player-col soko))
   ;; Include which action would lead to undoing the last action.
@@ -274,7 +274,7 @@ limitations under the License.|#
 
 (define solve-sokoban
   (make-bfs-solver #:n-actions n-actions
-                   #:get-contexts/setter get-contexts/setter
+                   #:collect-contexts collect-contexts
                    #:get-visited-key get-visited-key
                    #:solution? sokoban-solution?
                    #:do-action do-action))
@@ -306,7 +306,7 @@ limitations under the License.|#
 ###########")
     (define soko1 (string->sokoban s))
     (define setter (make-list-setter))
-    (get-contexts/setter soko1 #f setter)
+    (collect-contexts soko1 #f setter)
     (printf "Number of contexts: ~a\n" (length (setter)))))
 
 (module+ test
