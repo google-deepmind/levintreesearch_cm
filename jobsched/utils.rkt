@@ -91,10 +91,10 @@ limitations under the License.|#
 ;; Maybe we should use `fasl` here to speed up the transfer, but
 ;; whether it's advantageous should be checked.
 (define (send-msg v [out (current-output-port)])
-  (s-exp->fasl v out #:keep-mutable? #t) ; mutable hashes are faster than immutable ones
+  (s-exp->fasl v out #:keep-mutable? #true) ; mutable hashes are faster than immutable ones
   (flush-output out))
 
 (define (receive-msg [in (current-input-port)])
   (if (port-closed? in)
       eof
-      (fasl->s-exp in)))
+      (fasl->s-exp in #:datum-intern? #false)))
