@@ -122,11 +122,14 @@ Try the following example with:
 
 @defproc[(make-server [#:worker-file worker-file path-string?]
                       [#:submod-name submod-name symbol? 'worker]
-                      [#:n-workers n-workers (or/c #f integer?) #f])
+                      [#:n-workers n-workers (or/c #f integer?) #f]
+                      [#:errortrace? errortrace? any/c]
+                      [#:worker-args worker-args (listof (or/c #f string? path?))])
          scheduler?]{
  Returns a new scheduler.
  See @racket[start-simple-server].
  If @racket[n-workers] is not @racket[#f], then the workers are started asynchronously.
+ See @racket[make-racket-worker] for the arguments @racket[errortrace?] and @racket[worker-args].
 }
 
 @defproc[(server-start [sched scheduler?]

@@ -325,13 +325,17 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
 (define (make-server #:! worker-file
                      #:? [submod-name 'worker]
-                     #:? [n-workers #f])
+                     #:? [n-workers #f]
+                     #:? [errortrace? #f]
+                     #:? [worker-args '()])
   (define (make-worker-command _worker-index)
-    (make-racket-cmd worker-file #:submod submod-name))
+    (apply make-racket-cmd worker-file #:submod submod-name #:errortrace? errortrace? worker-args))
   (define sched (make-scheduler make-worker-command))
   (when n-workers
     ;; Start the workers
-    (server-start sched #:data-list '() #:process-result (λ (data result) (void))
+    (server-start sched
+                  #:data-list '()
+                  #:process-result (λ (data result) (void))
                   #:n-workers n-workers
                   #:close-workers? #false))
   sched)
