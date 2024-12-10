@@ -136,18 +136,36 @@ limitations under the License.|#
 ; ----------
 
 ;; pack
+;; We do not contrain the ids to be of class `id`, because sometimes it's convenient to use
+;; an expression too (although the name *is* `ids->assoc`, so... oh well).
 (define-syntax-rule (ids->assoc id ...)
   (list (cons 'id id) ...))
 
-(define (assoc-ref assoc sym)
-  (cdr (or (assq sym assoc)
-           (error "Symbol not found in assoc:" sym assoc))))
+(define (assoc-ref assoc sym [default (λ () (error "Symbol not found in assoc:" sym assoc))])
+  (define res (assq sym assoc))
+  (cond [(assq sym assoc) => cdr]
+        [(procedure? default) (default)]
+        [default]))
 
-;; unpack
-(define-syntax-rule (define-assoc (id ...) assoc)
+;; unpack. Default value can be given 
+(define-syntax-parse-rule (define-assoc ({~or* id:id [id:id expr:expr]} ...) assoc)
   (begin
-    (define id (assoc-ref assoc 'id))
+    (define id (assoc-ref assoc 'id {~? expr}))
     ...))
+
+(module+ test
+  (let ([x 3] [y 2])
+    (define dico (ids->assoc x y))
+    (let ()
+      (define-assoc (y [z 4]) dico)
+      (check-equal? y 2)
+      (check-equal? z 4)))
+  (let ([x 3] [y 2] [z 1])
+    (define dico (ids->assoc x y z))
+    (let ()
+      (define-assoc (y [z 4]) dico)
+      (check-equal? y 2)
+      (check-equal? z 1))))
 
 ; ----------
 

@@ -73,7 +73,9 @@ limitations under the License.|#
       (if (and pcond-seq (< t pcond-seq-len) on-sequence?)
           (let ([p (vector-ref pcond-seq t)])
             (vl-append (rotate (make-pcond-rect p) (/ pi 2))
-                       (text (format "1/p: ~a" (~r (/ 1. p) #:precision '(= 4))))))
+                       (text (format "1/p: ~a" (if (zero? p)
+                                                   "+inf.0"
+                                                   (~r (/ 1. p) #:precision '(= 4)))))))
           (blank)))
      ))
 
