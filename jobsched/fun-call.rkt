@@ -7,10 +7,11 @@
          syntax/location
          define2)
 
-(provide job:fun-call
+(provide (struct-out jobsched:fun-call)
+         job:fun-call
          start-fun-call-worker)
 
-(define JOBSCHED:FUN-CALL 'JOBSCHED:FUN-CALL)
+(struct jobsched:fun-call (fun-sym kw-dict pos-args) #:prefab)
 
 (define-syntax (job:fun-call stx)
   (syntax-parse stx
@@ -25,10 +26,9 @@
            ;; (Even if the compiler removes this branch at compile-time, it's fine.)
            fun-call
            ;; Collect the evaluated arguments
-           (list JOBSCHED:FUN-CALL
-                 'fun
-                 (list (~? (cons 'kw kw-arg)) ...)
-                 (list (~? arg2) ...)))]))
+           (jobsched:fun-call 'fun
+                              (list (~? (cons 'kw kw-arg)) ...)
+                              (list (~? arg2) ...)))]))
 
 (define (start-fun-call-worker module-path)
   (define mod-path
@@ -39,7 +39,7 @@
                                       module-path)]))
   (start-simple-worker
    (match-lambda
-     [(list JOBSCHED:FUN-CALL fun kw-args pos-args)
-      (define proc (dynamic-require mod-path fun))
-      (keyword-apply/dict proc kw-args pos-args)]
+     [(jobsched:fun-call fun-sym kw-dict pos-args)
+      (define proc (dynamic-require mod-path fun-sym))
+      (keyword-apply/dict proc kw-dict pos-args)]
      [jb (error "ill-formed job" jb)])))
