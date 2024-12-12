@@ -25,6 +25,8 @@ limitations under the License.|#
          "rubiks-cube.rkt"
          define2)
 
+(provide generate-train-file)
+
 (define-runtime-path program-path "rubiks-cube.rkt")
 (define log-dir-name "rubiks-cube")
 
@@ -38,7 +40,7 @@ limitations under the License.|#
    #(3980949144 784629000 4187860733 2858366043 3537181480 1167541959)))
 (define data-dir (make-temporary-directory "lts-cm-temp~a"))
 
-(define ((generate-train-file n-cubes scrambles-min scrambles-max) iter)
+(define ((generate-train-file n-cubes scrambles-min scrambles-max #:? [data-dir data-dir]) iter)
   (define f (build-path-string data-dir
                                (format "cube~a-walk~a-~a.rktd" iter scrambles-min scrambles-max)))
   (printf "Generating training set. scrambles ∈ [~a, ~a]\n" scrambles-min scrambles-max)
