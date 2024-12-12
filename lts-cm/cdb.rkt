@@ -48,8 +48,7 @@ limitations under the License.|#
        (vector-length (CDB-mutex-dicts cdb))))
 
 (define (CDB-n-params cdb)
-  ; = n-cols × n-rows
-  (flvector-length (CDB-βmatrix cdb)))
+  (* (CDB-n-rows cdb) (CDB-n-cols cdb)))
 
 (define (CDB-empty? cdb)
   (= (CDB-n-rows cdb) 0))
