@@ -122,7 +122,9 @@ limitations under the License.|#
     "or: Assertion failed"]
    ;; Check keywords are fine
    [(let ([f (λ (a #:b b) b)]) (assert (f #t #:b #f)))
-    "f: Assertion failed"]))
+    "f: Assertion failed"])
+
+  (assert (= 2 2) #:with a (error "don't go here!")))
 
 ;; Suppresses any output on the output port (but not on the error port).
 (define-syntax-rule (silent body ...)
