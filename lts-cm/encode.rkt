@@ -184,6 +184,9 @@ limitations under the License.|#
                                   list)
                 '((0 2 1 2 2) 0)))
 
+;; bts: bytes?
+;; idxs: fxvector?
+;; max-value: byte?
 ;; Encode all the values of the bytes `bts` found at the fxvector `idxs` of indices
 ;; within a single number.
 ;; The values found must not exceed `max-value` otherwise the encoding may be incorrect.
