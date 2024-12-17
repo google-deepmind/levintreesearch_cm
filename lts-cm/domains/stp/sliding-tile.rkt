@@ -96,7 +96,7 @@ limitations under the License.|#
   (define lst (shuffle (range (* N N))))
   ;; 50% chance to generate a valid instance
   (if (valid-stp-list? lst)
-      lst
+      (list->stp lst)
       (make-random-stp N)))
 
 (define (stp-n-solved aboard)
