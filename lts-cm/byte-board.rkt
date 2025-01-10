@@ -16,6 +16,7 @@ limitations under the License.|#
 (require racket/fixnum
          racket/list
          racket/format
+         text-table
          "encode.rkt"
          define2)
 
@@ -67,6 +68,7 @@ limitations under the License.|#
   (define l2 (take lst (* n-rows n-cols)))
   (board (apply bytes l2) n-rows n-cols))
 
+;; Warning: not the converse of `list->board`
 (define (board->list aboard)
   (bytes->list (board-vec aboard)))
 
@@ -80,11 +82,19 @@ limitations under the License.|#
              #:when (= x y))
     (quotient/remainder pos (board-n-cols aboard))))
 
+(define (board->table aboard)
+  (for/list ([row (in-range (board-n-rows aboard))])
+    (for/list ([col (in-range (board-n-cols aboard))])
+      (board-ref aboard row col))))
+
+(define (board->string aboard)
+  (table->string (board->table aboard)))
+
 (define (print-board aboard)
-  (for ([row (in-range (board-n-rows aboard))])
-    (for ([col (in-range (board-n-cols aboard))])
-      (display (~a (board-ref aboard row col) #:min-width 4 #:align 'right)))
-    (newline)))
+  (displayln (board->string aboard)))
+
+(module+ drracket
+  (print-board (list->board (build-list 100 values) 10)))
 
 ;================;
 ;=== Contexts ===;
