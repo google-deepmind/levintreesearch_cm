@@ -99,6 +99,24 @@ limitations under the License.|#
       (list->stp lst)
       (make-random-stp N)))
 
+(module+ test
+  (for ([i 100])
+    (define s (make-random-stp 2))
+    (check member
+           (stp->list s)
+           '((0 1 2 3)
+             (1 0 2 3)
+             (1 3 2 0)
+             (1 3 0 2)
+             (0 3 1 2)
+             (3 0 1 2)
+             (3 2 1 0)
+             (3 2 0 1)
+             (0 2 3 1)
+             (2 0 3 1)
+             (2 1 3 0)
+             (2 1 0 3)))))
+
 (define (stp-n-solved aboard)
   (for/sum ([x (in-bytes (board-vec aboard))] [i (in-naturals)])
     (if (= x i) 1 0)))
