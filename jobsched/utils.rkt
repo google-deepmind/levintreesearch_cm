@@ -60,6 +60,7 @@ limitations under the License.|#
 ;;   racket/benchmarks/places/place-processes.rkt#L63
 (define (current-executable-path)
   (parameterize ([current-directory (find-system-path 'orig-dir)])
+    ;; WARNING: May not work properly when there are links to follow
     (find-executable-path (find-system-path 'exec-file) #f)))
 
 (define (current-collects-path)
