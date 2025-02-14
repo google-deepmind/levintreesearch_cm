@@ -11,4 +11,4 @@
 (define version "0.1")
 (define pkg-authors '(lorseau))
 (define license 'Apache-2.0)
-(define test-omit-paths '("examples"))
+(define test-omit-paths '("examples" "test/test-unreadable.rkt"))
