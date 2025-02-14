@@ -149,7 +149,7 @@ limitations under the License.|#
         [(procedure? default) (default)]
         [default]))
 
-;; unpack. Default value can be given 
+;; unpack. Default value can be given
 (define-syntax-parse-rule (define-assoc ({~or* id:id [id:id expr:expr]} ...) assoc)
   (begin
     (define id (assoc-ref assoc 'id {~? expr}))

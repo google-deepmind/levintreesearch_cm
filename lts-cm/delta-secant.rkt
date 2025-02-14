@@ -30,6 +30,8 @@ limitations under the License.|#
 ;****                Delta-Secant: Line Search For Convex Functions                ****;
 ;**************************************************************************************;
 
+;;; This is an implementation of "Line search for convex functions (https://arxiv.org/abs/2307.16560)
+
 (struct pt (x y) #:transparent)
 (struct ptg pt (g) #:transparent) ; g is the gradient, if available
 
@@ -180,7 +182,7 @@ limitations under the License.|#
 ;;   'x-, 'x+: boundaries of the x*-gap Δx
 ;;   'ya, 'yb: y-values of the two bottom vertices of the optimality triangles
 ;;   'xgap, 'ygap: |Δx| and |Δy|
-;;   'xlow, 'ylow: lowest queried point
+;;   'xlow, 'ylow: lowest queried point = middle point of the 5 points
 ;; Note: See `define-assoc` to deal with the dictionaries.
 (define (convex-line-search* f pts
                              #:! stop-when
@@ -237,6 +239,8 @@ limitations under the License.|#
 ;; f, xleft, xright, xq, yq, callback: see `convex-line-search`
 ;; jac^2: real? ; L2-norm of the Jacobian. Can provide additional information to speed up the search.
 ;; c: positive-real? ; algorithm parameter. As c tends to ∞, the line search becomes more exact.
+;; Returns the same dictionary type as `convex-line-search`.
+;;
 ;; Features:
 ;; * Uses initial gradient information to speed up the search a little
 ;; * Avoids one query at xright if f(xq) ≥ f(xleft)
