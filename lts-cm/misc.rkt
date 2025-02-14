@@ -98,31 +98,37 @@ limitations under the License.|#
 (module+ test
   (define-syntax (check-error-messages stx)
     (syntax-case stx ()
-      [(_ [test msg] ...)
+      [(_ [test pre maybe post] ...)
        #'(begin
-           (check-equal? (with-handlers ([exn:fail? (λ (e) (exn-message e))]) test)
+           (check-regexp-match
+            (pregexp (string-append (regexp-quote pre)
+                                    "(\n  in: " (regexp-quote maybe) ")?"
+                                    (regexp-quote post)
+                                    "$"))
+            (with-handlers ([exn:fail? (λ (e) (exn-message e))]) test))
+           #;(check-equal? (with-handlers ([exn:fail? (λ (e) (exn-message e))]) test)
                          msg)
            ...)]))
   (check-error-messages
    [(assert (= 2 3))
-    "=: Assertion failed"]
+    "=: Assertion failed" "(= 2 3)" ""]
    [(let ([x 3]) (assert (= 2 x)))
-    "=: Assertion failed\n arguments:\n  x: 3\n"]
+    "=: Assertion failed" "(= 2 x)" "\n arguments:\n  x: 3\n"]
    [(let ([x 3]) (assert (= 2 x) x))
-    "=: Assertion failed\n arguments:\n  x: 3\n"] ; no context
+    "=: Assertion failed" "(= 2 x)" "\n arguments:\n  x: 3\n"] ; no context
    [(let ([x 3]) (assert (= 2 3) x))
-    "=: Assertion failed\n context:\n  x: 3\n"]
+    "=: Assertion failed" "(= 2 3)" "\n context:\n  x: 3\n"]
    [(let ([x #t]) (assert (and #f (error "shouldn't be raised"))))
-    "and: Assertion failed"]
+    "and: Assertion failed" "(and #f (error \"shouldn't be raised\"))" ""]
    [(let ([x 2] [y 3] [z 4]) (assert (= x y) z #:with l (+ 2 3 4))) ; allows for exprs within assert
-    "=: Assertion failed\n arguments:\n  x: 2\n  y: 3\n context:\n  z: 4\n  l: 9\n"]
+    "=: Assertion failed" "(= x y)" "\n arguments:\n  x: 2\n  y: 3\n context:\n  z: 4\n  l: 9\n"]
    [(let ([x 2] [y 3]) (assert (= x (or y))))
-    "=: Assertion failed\n arguments:\n  x: 2\n"]
+    "=: Assertion failed" "(= x (or y))" "\n arguments:\n  x: 2\n"]
    [(let ([x 2] [y 3]) (assert (or (= x y))))
-    "or: Assertion failed"]
+    "or: Assertion failed" "(or (= x y))" ""]
    ;; Check keywords are fine
    [(let ([f (λ (a #:b b) b)]) (assert (f #t #:b #f)))
-    "f: Assertion failed"])
+    "f: Assertion failed" "(f #t #:b #f)" ""])
 
   (assert (= 2 2) #:with a (error "don't go here!")))
 
