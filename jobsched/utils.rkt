@@ -63,13 +63,6 @@ limitations under the License.|#
     ;; WARNING: May not work properly when there are links to follow
     (find-executable-path (find-system-path 'exec-file) #f)))
 
-(define (current-collects-path)
-  (let ([p (find-system-path 'collects-dir)])
-    (if (complete-path? p)
-      p
-      (path->complete-path p (or (path-only (current-executable-path))
-                                 (find-system-path 'orig-dir))))))
-
 ;; Notice: `#f` are filtered out of `args`.
 (define (make-racket-cmd path-to-prog #:? [submod #f] #:? [errortrace? #f] . args)
   (define path-to-prog-str
@@ -77,17 +70,17 @@ limitations under the License.|#
       path-to-prog
       (path->string path-to-prog)))
   (let ([args (filter values args)])
-    (if submod
-        `(,(current-executable-path) ;"/usr/bin/env" "racket"
-         "-X" ,(current-collects-path)
-         "-l" "racket/init"
-         ,@(if errortrace? '("-l" "errortrace") '())
-         "-e" ,(format "(require (submod (file ~s) ~a))" path-to-prog-str submod)
-         "--"
-         ,@args)
-        `(,(current-executable-path) "-X" ,(current-collects-path)
-                                     ,@(if errortrace? '("-l" "errortrace" "-t-") '())
-                                     ,path-to-prog ,@args))))
+    `(,(current-executable-path)
+      ,@(for*/list ([p (in-list (current-library-collection-paths))]
+                    [x '("-X" #f)])
+          (or x p))
+      "-l" "racket/init"
+      ,@(if errortrace? '("-l" "errortrace") '())
+      ,@(if submod
+            (list "-e" (format "(require (submod (file ~s) ~a))" path-to-prog-str submod))
+            (list "-t" path-to-prog))
+      "--"
+         ,@args)))
 
 ;; Maybe we should use `fasl` here to speed up the transfer, but
 ;; whether it's advantageous should be checked.
