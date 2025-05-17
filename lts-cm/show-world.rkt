@@ -21,6 +21,7 @@ limitations under the License.|#
 (provide show-world)
 
 ;; on-key          : key-event? -> pict
+;; on-mouse-event  : mouse-event? -> pict
 ;; pict-init       : pict?
 ;; parent          : (or/c (is-a?/c frame%) (is-a?/c dialog) #f)
 ;; label           : label-string?
@@ -32,6 +33,7 @@ limitations under the License.|#
 ;; x-scroll-amount : positive-real?
 ;; y-scroll-amount : positive-real?
 (define (show-world #:? [on-key (λ (ev) #f)]
+                    #:? [on-mouse-event (λ (ev) #f)]
                     #:? [pict-init (blank 100 100)]
                     #:? [parent #f]
                     #:? [label "MrPict"]
@@ -89,6 +91,11 @@ limitations under the License.|#
         (when (pict? new-pict)
           (send fr set-pict! new-pict)))
 
+      (define/override (on-event ev)
+        (define new-pict (on-mouse-event ev))
+        (when (pict? new-pict)
+          (send fr set-pict! new-pict)))
+
       (super-new [style (append (if hscroll? '(hscroll) '())
                                 (if vscroll? '(vscroll) '()))]
                  [min-width  (if hscroll? width pw)]
@@ -125,6 +132,14 @@ limitations under the License.|#
 
   ;; Press the arrow keys to change the size or color of the disk
   (show-world #:pict-init (disk size)
+              #:on-mouse-event
+              (λ (ev)
+                (case (send ev get-event-type)
+                  [(left-up) (set! size (min 1000 (+ size 10)))
+                             (make-pict)]
+                  [(right-up) (set! size (max 10 (- size 10)))
+                              (make-pict)])
+                )
               #:on-key (λ (ev)
                          (case (send ev get-key-code)
                            [(up) (set! size (min 1000 (+ size 10)))
