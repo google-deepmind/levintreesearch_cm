@@ -133,19 +133,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   (define in  (worker-in  wk))
   (define out (worker-out wk))
   (send-msg message:close-worker out)
-  (set-worker-state! wk state:closing)
-  ;; Returns the thread, that can be sync'ed with.
-  #;
-  (thread
-   ;; Wait until the port of the worker is closed.
-   (λ ()
-     (println "worker is closing...")
-     (sleep 1)
-     (writeln "Hey!!" out) ; this should fail with port closed?
-     ;; We need to wait for the process to be closed
-     (sync (port-closed-evt out) (port-closed-evt in))
-     (println "worker has closed")
-     (set-worker-state! wk state:closed))))
+  (set-worker-state! wk state:closing))
 
 (define (worker-kill wk)
   (when-verb (printf "Terminating worker: ~a\n" wk))
@@ -154,8 +142,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   (define in  (worker-in wk))
   (define out (worker-out wk))
   (when in  (close-input-port in))
-  (when out (close-output-port out))
-  (worker-close wk))
+  (when out (close-output-port out)))
 
 (define-syntax (check-state-in stx)
   (syntax-parse stx
@@ -324,21 +311,28 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
       (server-loop)))
 
-  (with-handlers ([exn:fail? (λ (e)
-                               (displayln "Exception caught. Closing all workers.")
-                               (scheduler-close sched)
-                               (raise e))])
+  (with-handlers ([exn? (λ (e)
+                          (sleep .5) ; for better display formatting
+                          (scheduler-force-close sched)
+                          (sleep .5)
+                          (raise e))])
     (server-loop))
 
   (when close? (scheduler-close sched)))
 
-  ;; Terminate all workers, close the ports, etc.
+;; Close all workers, close the ports, etc.
 (define (scheduler-close sched)
   (when-verb (printf "Waiting for all ~a workers to close\n" (scheduler-n-workers sched)))
   (for-each worker-close (scheduler-workers sched))
   (for ([wk (in-list (scheduler-workers sched))])
     ((worker-handler wk) 'wait))
   (when-verb (println "All workers closed."))
+  (set-scheduler-workers! sched '()))
+
+(define (scheduler-force-close sched)
+  (printf "Killing all ~a workers\n" (scheduler-n-workers sched))
+  (for-each worker-kill (scheduler-workers sched))
+  (when-verb (println "All workers killed."))
   (set-scheduler-workers! sched '()))
 
 ;==============;
