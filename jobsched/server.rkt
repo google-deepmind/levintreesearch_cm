@@ -172,6 +172,22 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   (define wk (worker 'name 'cmd 'in 'out 'err 'pid 'handler 1 #f state:starting))
   (check-state-in wk state:ready))
 
+(define (receive-worker-msg wk)
+  (with-handlers
+      ([exn:fail?
+        (λ (e)
+          (displayln "Error when receiving data from worker. Worker:")
+          (writeln wk)
+          (newline)
+          (displayln "Error:")
+          (println e)
+          (when (eq? 'state:starting (worker-state wk))
+            (newline)
+            (displayln "Possible cause: Data is sent to output by worker before `start-worker`.")
+            (newline))
+          (raise e))])
+    (receive-msg (worker-in wk))))
+
 ;—————————————————————————————————————————————————————————————————————————————————————————————————————
 
 ;; before-start : scheduler? job? -> any
@@ -243,12 +259,13 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
     (when (eq? (worker-state wk) state:ready)
       (worker-ask-ready wk)))
 
-  (unless (= 0 (scheduler-n-queued-jobs sched))
-    (let loop ()
+  (define (server-loop)
+    (unless (and (= 0 (scheduler-n-active-jobs sched))
+                 (= 0 (scheduler-n-queued-jobs sched)))
       ;; Find a worker that has output a value.
       ;; The workers must start by sending out `ready-message`.
       (define wk (apply sync (get-workers)))
-      (define res (receive-msg (worker-in wk)))
+      (define res (receive-worker-msg wk))
       (define now (- (current-seconds) start-seconds))
       (define wk-ready?
         (cond [(eof-object? res)
@@ -305,8 +322,13 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
           (set-worker-state! wk state:running)
           (send-msg (struct->list jb) (worker-out wk))))
 
-      (unless (= 0 (scheduler-n-active-jobs sched)) ; also implies queue is empty
-        (loop))))
+      (server-loop)))
+
+  (with-handlers ([exn:fail? (λ (e)
+                               (displayln "Exception caught. Closing all workers.")
+                               (scheduler-close sched)
+                               (raise e))])
+    (server-loop))
 
   (when close? (scheduler-close sched)))
 

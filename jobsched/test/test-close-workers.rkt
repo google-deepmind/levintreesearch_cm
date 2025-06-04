@@ -3,6 +3,7 @@
 
 (module+ worker
   (define tmp (make-temporary-file))
+  (eprintf "Starting worker.\n")
   (start-simple-worker (λ (x) (sleep .2) (path->string tmp)))
   ;; Clean up when server closes:
   (delete-file tmp)
@@ -13,7 +14,7 @@
   #;(println "Don't do this!")
   ;; Writing to the error-port is still permitted, and is redirected to the server's error port.
   ;; (but this breaks the rackunit checks, so we don't do it here.)
-  #;(eprintf "This you can do\n"))
+  (eprintf "Ending worker\n")) ; This you can do
 
 (module+ test
   (require rackunit)
