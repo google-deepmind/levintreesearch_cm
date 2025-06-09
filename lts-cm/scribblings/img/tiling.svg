@@ -1,0 +1,64 @@
+<svg width="280" height="130" viewBox="20 20 280 130" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="6">
+  
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+    </marker>
+  </defs>
+
+  <style>
+    .box {
+      fill: white;
+      stroke: black;
+      stroke-width: 1.5;
+    }
+    .arrow {
+      stroke: black;
+      stroke-width: 1;
+      marker-start: url(#arrowhead);
+      marker-end: url(#arrowhead);
+      fill: none;
+    }
+    .label {
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+  </style>
+
+
+  <g stroke="lightgray" stroke-width="0.5">
+    <path d="M 10 0 V 240 M 30 0 V 240 M 50 0 V 240 M 70 0 V 240 M 90 0 V 240 M 110 0 V 240 M 130 0 V 240 M 150 0 V 240 M 170 0 V 240 M 190 0 V 240 M 210 0 V 240 M 230 0 V 240 M 250 0 V 240" />
+    <path d="M 0 10 H 260 M 0 30 H 260 M 0 50 H 260 M 0 70 H 260 M 0 90 H 260 M 0 110 H 260 M 0 130 H 260 M 0 150 H 260 M 0 170 H 260 M 0 190 H 260 M 0 210 H 260 M 0 230 H 260" />
+  </g>
+
+  <rect x="28" y="28" width="224" height="104" class="box" fill-opacity="0" style="stroke:blue"/>
+
+  <rect x="30" y="30" width="40" height="60" class="box" fill-opacity="0" style="stroke:red"/>
+  <text x="50" y="40" class="label">1st tile</text>
+
+  <rect x="210" y="70" width="40" height="60" class="box" fill-opacity="0" style="stroke:red" />
+  <text x="230" y="80" class="label">last tile</text>
+  
+  <path d="M 30 95 L 70 95" class="arrow"/>
+  <text x="50" y="100" class="label">col span = 2</text>
+  
+  <path d="M 75 30 L 75 90" class="arrow"/>
+  <text x="80" y="60" class="label" transform="rotate(-90, 80, 60)">row span = 3</text>
+
+  <rect x="130" y="70" width="20" height="20" class="box" />
+  <text x="140" y="75" class="label">row0</text>
+  <text x="140" y="85" class="label">col0</text>
+  
+  <path d="M 150 60 L 250 60" class="arrow"/>
+  <text x="200" y="55" class="label">col dist = 5</text>
+
+  <path d="M 120 30 L 120 70" class="arrow"/>
+  <text x="115" y="50" class="label" transform="rotate(-90, 115, 50)">row dist = 2</text>
+  
+  <path d="M 30 135 L 250 135" class="arrow"/>
+  <text x="140" y="140" class="label">col dist × 2 + 1</text>
+  
+  <path d="M 255 30 L 255 130" class="arrow" />
+  <text x="260" y="80" class="label" transform="rotate(-90, 260, 80)">row dist × 2 + 1</text>
+
+</svg>
