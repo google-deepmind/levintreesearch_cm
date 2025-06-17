@@ -30,7 +30,7 @@ limitations under the License.|#
         (#:silent? any/c)
         any)]))
 
-;; run-job : gbs-node? -> any/c
+;; run-job : job? -> any/c
 ;; The result of `start-worker` must be writeable and readable.
 (define (start-worker run-job #:? [silent? #f])
   (send-msg message:ready) ; This is important
@@ -43,14 +43,13 @@ limitations under the License.|#
        ;; Terminate the worker.
        (void)]
       [(eq? msg message:close-worker)
-       #;(send-msg worker-closing-message)
        ;; Exit gracefully.
        (void)]
       [(eq? msg message:ask-ready)
        (send-msg message:ready)
        (loop)]
       [else
-       (define nd (apply job msg))
+       (define jb (apply job msg))
 
        ;; The custodian ensures that all open files are closed. I was getting a
        ;; "too many files opened" error after 30min and many simple jobs,
@@ -64,7 +63,7 @@ limitations under the License.|#
                         [current-output-port (if silent?
                                                  (open-output-nowhere)
                                                  (current-error-port))])
-           (run-job nd)))
+           (run-job jb)))
        (custodian-shutdown-all cust)
 
        (send-msg res)
