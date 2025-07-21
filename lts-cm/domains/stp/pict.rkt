@@ -15,6 +15,7 @@ limitations under the License.|#
 
 (require lts-cm/byte-board
          pict
+         racket/draw
          "sliding-tile.rkt"
          define2)
 
@@ -22,24 +23,32 @@ limitations under the License.|#
 
 (define cell-size 32)
 
-(define empty-cell-pict
-  (filled-rectangle cell-size cell-size #:color "white" #:border-color "black" #:border-width 1))
+(define (empty-cell-pict color)
+  (filled-rectangle cell-size cell-size #:color color #:border-color "black" #:border-width 1))
 
-(define (make-cell n)
-  (cc-superimpose empty-cell-pict
+(define (get-cell-color n n-rows n-cols)
+  (define-values (row col) (quotient/remainder n n-cols))
+  (make-color 180
+              (quotient (* 256 row) n-rows)
+              (quotient (* 256 col) n-cols)))
+
+(define (make-cell n n-rows n-cols)
+  (cc-superimpose (empty-cell-pict (get-cell-color n n-rows n-cols))
                   (text (number->string n))))
 
 (define (stp->pict stp)
+  (define n-rows (board-n-rows stp))
+  (define n-cols (board-n-cols stp))
   (apply
    vl-append
-   (for/list ([row (in-range (board-n-rows stp))])
+   (for/list ([row (in-range n-rows)])
      (apply
       ht-append
-      (for/list ([col (in-range (board-n-cols stp))])
+      (for/list ([col (in-range n-cols)])
         (define c (board-ref stp row col))
         (if (= 0 c)
-            empty-cell-pict
-            (make-cell c)))))))
+            (empty-cell-pict "white")
+            (make-cell c n-rows n-cols)))))))
 
 (module+ drracket
   (stp->pict (make-stp 5)))
