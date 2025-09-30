@@ -60,9 +60,9 @@ limitations under the License.|#
         (set! pw (inexact->exact (ceiling (pict-width  the-pict))))
         (set! ph (inexact->exact (ceiling (pict-height the-pict))))
         (set! no-redraw? #t)
-        (send cv min-width  pw)
-        (send cv min-height ph)
-        (send fr resize pw ph)
+        (send cv min-width  (or width pw))
+        (send cv min-height (or height ph))
+        (send fr resize pw ph) ; resizes only if larger
         (set! no-redraw? #f)
         (send fr reflow-container)
         (send cv refresh))
@@ -107,6 +107,8 @@ limitations under the License.|#
                   [parent parent]
                   [label label]
                   [style frame-style]
+                  [min-width width]
+                  [min-height height]
                   [x frame-x]
                   [y frame-y]))
   (define cv (new pict-canvas% [parent fr]))
@@ -132,6 +134,7 @@ limitations under the License.|#
 
   ;; Press the arrow keys to change the size or color of the disk
   (show-world #:pict-init (disk size)
+              #:width 100 #:height 50
               #:on-mouse-event
               (λ (ev)
                 (case (send ev get-event-type)
