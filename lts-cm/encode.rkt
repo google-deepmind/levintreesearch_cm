@@ -25,12 +25,21 @@ limitations under the License.|#
 ;****                           Integer Encoding/Decoding                           ****;
 ;***************************************************************************************;
 
-;; Returns a list of integers ints such that (integer-merge ints sizes) = n
+;; Returns a list of integers ints such that (naturals->fixnum ints sizes) = n
+;; Decoding starts with the *last* of `sizes`.
 ;; remainder : (or/c #t #f 'check-0 'cons)
 ;;   If #f, the remainder is discared
 ;;   If #t, the remainder is returned as a second value
 ;;   If 'check-0, an exception is raised if the remainder is not 0.
 ;;   if 'cons, the remainder is cons'ed into the resulting list.
+;;
+;; Can be used to decode seconds to yr:hr:mn:sec :
+;; > (fixnum->naturals 1652558273 '(365 24 60 60) #:remainder #t)
+;; '(146 19 57 53)
+;; 52
+;; where the remainder is the year relative to 1970,
+;; and 146 is the 146th day of the year.
+;; This does not account for leap years and such though.
 (define (fixnum->naturals n-orig sizes #:? [remainder 'check-0])
   (for/fold ([n n-orig]
              [res '()]
@@ -53,13 +62,6 @@ limitations under the License.|#
 ;; Encoding can be performed sequentially by passing the previous code as the
 ;; `n` argument. See examples below.
 ;;
-;; Can be used to decode seconds to yr:hr:mn:sec :
-;; > (naturals->fixnum 1652558273 '(365 24 60 60) #:remainder #t)
-;; '(146 19 57 53)
-;; 52
-;; where the remainder is the year relative to 1970,
-;; and 146 is the 146th day of the year.
-;; This does not account for leap years and such though.
 (define (naturals->fixnum ints sizes [n 0])
   (for/fold ([n n])
             ([i (in-list ints)]
