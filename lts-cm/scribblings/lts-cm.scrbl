@@ -417,13 +417,13 @@ A board is a structure holding a flat byte string along with its dimensions.
 
 @defmodule[lts-cm/delta-secant]
 
-This module implements the Δ-Secant line search algorithm for the paper
+This module implements the Δ-Secant line search algorithm from the paper
 @hyperlink["https://arxiv.org/abs/2307.16560"]{``Line Search for Convex Minimization''}.
 
 The function @racket[convex-line-search] returns the lowest point found of a given convex function
 between two initial points when a stopping criterion is satisfied.
 
-The function @racket[quasi-exact-line-search] build upon @racket[convex-line-search] to ensure
+The function @racket[quasi-exact-line-search] builds upon @racket[convex-line-search] to ensure
 @emph{sufficient} progress is made, and is intended to be used within an optimization algorithm
 such as @hyperlink["https://en.wikipedia.org/wiki/Gradient_descent"]{gradient descent} or
 @hyperlink["https://en.wikipedia.org/wiki/Frank%E2%80%93Wolfe_algorithm"]{Frank-Wolfe}.
