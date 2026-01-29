@@ -75,7 +75,8 @@ limitations under the License.|#
     [(_ [v:expr size:expr] rst ...)
      #'(naturals->fixnum* 0 [v size] rst ...)]
     [(_ enc:expr [v:expr size:expr] rst ...)
-     #'(naturals->fixnum* (natural-encode1 v size enc) rst ...)]
+     #'(let ([enc1 (natural-encode1 v size enc)])
+         (naturals->fixnum* enc1 rst ...))]
     [(_ x:expr) #'x]))
 
 (define (naturals->fixnum/check ints sizes [n 0])
