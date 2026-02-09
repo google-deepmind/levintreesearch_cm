@@ -72,6 +72,7 @@ limitations under the License.|#
 (define (board->list aboard)
   (bytes->list (board-vec aboard)))
 
+;; Warning: Does *not* return a copy
 (define (board->bytes aboard)
   (board-vec aboard))
 

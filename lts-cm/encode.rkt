@@ -75,7 +75,7 @@ limitations under the License.|#
     [(_ [v:expr size:expr] rst ...)
      #'(naturals->fixnum* 0 [v size] rst ...)]
     [(_ enc:expr [v:expr size:expr] rst ...)
-     #'(let ([enc1 (natural-encode1 v size enc)])
+     #'(let ([enc1 (natural-encode1 v size enc)]) ; precalculate to avoid recursive recalculation
          (naturals->fixnum* enc1 rst ...))]
     [(_ x:expr) #'x]))
 
