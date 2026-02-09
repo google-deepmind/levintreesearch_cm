@@ -1,7 +1,7 @@
 #lang info
 
 (define collection "timev")
-(define deps '("base" "define2"))
+(define deps '("base" "define2" "global"))
 (define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/timev.scrbl" ())))
 (define pkg-desc "Similar to `time` with more options")
