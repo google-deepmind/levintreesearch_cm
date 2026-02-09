@@ -1,0 +1,40 @@
+name: Publish Subpackages
+
+on:
+  push:
+    branches:
+      - main
+    # Only trigger if one of these folders is modified
+    paths:
+      - 'timev/**'
+      - 'jobsched/**'
+      # - 'future-package/**'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # List your packages here. 
+        # The workflow will run a separate job for each item in this list.
+        package: [timev, jobsched]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish ${{ matrix.package }} to orphan branch
+        uses: s0/git-publish-subdir-action@develop
+        env:
+          REPO: self
+          # The folder in your main repo to grab
+          FOLDER: ${{ matrix.package }}
+          # The destination branch (e.g., 'timev' -> 'timev-pkg')
+          BRANCH: ${{ matrix.package }}-pkg
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # meaningful commit message for the bot
+          MESSAGE: "Update ${{ matrix.package }} from monorepo commit {sha}"
+
