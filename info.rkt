@@ -2,6 +2,7 @@
 (define collection 'multi)
 (define deps '("data-lib"
                "define2"
+               "draw-lib"
                "global"
                "gui-lib"
                "math-lib"
