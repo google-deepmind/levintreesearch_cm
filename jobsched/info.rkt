@@ -5,7 +5,7 @@
                "global"
                "base"
                "timev"))
-(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
+(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib" "distributed-places-doc"))
 (define scribblings '(("scribblings/jobsched.scrbl" ())))
 (define pkg-desc "Job scheduler — spawns multiple Racket instances")
 (define version "0.1")
