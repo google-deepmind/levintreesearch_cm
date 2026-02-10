@@ -8,6 +8,7 @@ on:
     paths:
       - 'timev/**'
       - 'jobsched/**'
+      - 'lts-cm/**'
       # - 'future-package/**'
 
 permissions:
@@ -20,7 +21,7 @@ jobs:
       matrix:
         # List your packages here. 
         # The workflow will run a separate job for each item in this list.
-        package: [timev, jobsched]
+        package: [timev, jobsched, lts-cm]
 
     steps:
       - name: Checkout repository

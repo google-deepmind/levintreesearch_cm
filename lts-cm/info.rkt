@@ -1,14 +1,21 @@
 #lang info
 (define collection "lts-cm")
 (define deps '("base"
+               "data-lib"
                "define2"
+               "draw-lib"
                "global"
                "gui-lib"
                "jobsched"
+               "math-lib"
+               "pict-lib"
+               "plot-gui-lib"
+               "plot-lib"
+               "rackunit-lib"
                "safe-case"
-               "timev"
+               "text-block"
                "text-table"
-               "text-block"))
+               "timev"))
 (define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/lts-cm.scrbl" ())))
 (define pkg-desc "LevinTreeSearch with Context Models — main collection")

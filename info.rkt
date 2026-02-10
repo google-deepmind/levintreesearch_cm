@@ -1,21 +1,10 @@
 #lang info
-(define collection 'multi)
-(define deps '("data-lib"
-               "define2"
-               "draw-lib"
-               "global"
-               "gui-lib"
-               "math-lib"
-               "pict-lib"
-               "plot-gui-lib"
-               "plot-lib"
-               "rackunit-lib"
-               "safe-case"
-               "text-table"
-               "text-block"
-               "base"))
-(define build-deps '("distributed-places-doc"
-                     "scribble-lib" "racket-doc" "rackunit-lib"))
+(define collection "levintreesearch_cm" #;'multi)
+(define deps '("base"
+               "lts-cm"
+               "jobsched"
+               "timev"))
+(define build-deps '())
 (define pkg-desc "LevinTreeSearch with Context Models")
 (define version "0.0")
 (define pkg-authors '(lorseau))
