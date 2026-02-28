@@ -153,7 +153,7 @@ limitations under the License.|#
   (define res (assq sym assoc))
   (cond [(assq sym assoc) => cdr]
         [(procedure? default) (default)]
-        [default]))
+        [else default]))
 
 ;; unpack. Default value can be given
 (define-syntax-parse-rule (define-assoc ({~or* id:id [id:id expr:expr]} ...) assoc)
@@ -173,7 +173,10 @@ limitations under the License.|#
     (let ()
       (define-assoc (y [z 4]) dico)
       (check-equal? y 2)
-      (check-equal? z 1))))
+      (check-equal? z 1)))
+  (let ()
+    (define-assoc ([a #f]) '())
+    (check-equal? a #false)))
 
 ; ----------
 
