@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Publish ${{ matrix.package }} to orphan branch
         uses: s0/git-publish-subdir-action@develop
