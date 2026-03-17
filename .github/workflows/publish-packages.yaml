@@ -9,6 +9,7 @@ on:
       - 'timev/**'
       - 'jobsched/**'
       - 'lts-cm/**'
+      - 'levintreesearch_cm/**'
       # - 'future-package/**'
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
       matrix:
         # List your packages here. 
         # The workflow will run a separate job for each item in this list.
-        package: [timev, jobsched, lts-cm]
+        package: [timev, jobsched, lts-cm, levintreesearch_cm]
 
     steps:
       - name: Checkout repository
