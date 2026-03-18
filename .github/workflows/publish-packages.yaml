@@ -28,9 +28,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Copy shared README into subpackages
-        run: cp lts-cm/README.md levintreesearch_cm/README.md
-
       - name: Publish ${{ matrix.package }} to orphan branch
         uses: s0/git-publish-subdir-action@develop
         env:

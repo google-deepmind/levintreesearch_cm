@@ -1,0 +1,23 @@
+name: Check README sync
+
+on:
+  push:
+    paths:
+      - 'lts-cm/README.md'
+      - 'levintreesearch_cm/README.md'
+  pull_request:
+    paths:
+      - 'lts-cm/README.md'
+      - 'levintreesearch_cm/README.md'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check that READMEs are in sync
+        run: |
+          if ! diff -q lts-cm/README.md levintreesearch_cm/README.md; then
+            echo "::error::lts-cm/README.md and levintreesearch_cm/README.md are out of sync. Please copy the updated file."
+            exit 1
+          fi
