@@ -1,15 +1,12 @@
 #lang racket/base
-;;; Test that job:fun-call correctly resolves library functions.
-;;; The file uses #lang racket/base, so the worker submodule does NOT
-;;; have access to racket/list. Only the test submodule imports it.
-;;; The worker resolves `first` via dynamic-require using the module
-;;; path embedded in each job struct by job:fun-call.
+;;; Test that remote-call correctly resolves library functions and primitives.
+;;; Uses #lang racket/base so the worker submodule does NOT have racket/list.
 
 (require jobsched jobsched/fun-call)
 
 (module+ worker
   ;; Only has racket/base — no racket/list.
-  (start-fun-call-worker))
+  (start-remote-call-worker))
 
 (module+ test
   (require rackunit
@@ -17,10 +14,10 @@
 
   ;; Test 1: `first` from racket/list
   ;; Test 2: `+` primitive from #%runtime
-  (define data (list (job:fun-call (first '(10 20 30)))
-                     (job:fun-call (first '(a b c)))
-                     (job:fun-call (+ 1 2 3))
-                     (job:fun-call (+ 100 200))))
+  (define data (list (remote-call (first '(10 20 30)))
+                     (remote-call (first '(a b c)))
+                     (remote-call (+ 1 2 3))
+                     (remote-call (+ 100 200))))
   (define results '())
 
   (start-simple-server #:worker-file (this-file)

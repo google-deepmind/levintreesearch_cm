@@ -1,5 +1,5 @@
 #lang racket/base
-;;; Test that job:fun-call works with functions from submodules.
+;;; Test that remote-call works with functions from submodules.
 
 (require jobsched jobsched/fun-call)
 
@@ -8,13 +8,13 @@
   (define (helper-add x y) (+ x y)))
 
 (module+ worker
-  (start-fun-call-worker))
+  (start-remote-call-worker))
 
 (module+ test
   (require rackunit
            (submod ".." helpers))
-  (define data (list (job:fun-call (helper-add 1 2))
-                     (job:fun-call (helper-add 10 20))))
+  (define data (list (remote-call (helper-add 1 2))
+                     (remote-call (helper-add 10 20))))
   (define results '())
 
   (start-simple-server #:worker-file (this-file)

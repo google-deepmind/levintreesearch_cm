@@ -7,16 +7,23 @@
          syntax/location
          define2)
 
-(provide (struct-out jobsched:fun-call)
-         job:fun-call
-         start-fun-call-worker)
+(provide remote-call            ; the macro
+         remote-call?           ; predicate
+         remote-call-mod-path   ; accessor
+         remote-call-fun-sym    ; accessor
+         remote-call-kw-dict    ; accessor
+         remote-call-pos-args   ; accessor
+         start-remote-call-worker)
 
 ;; mod-path: a module path suitable for `dynamic-require`
-;;   (e.g., absolute path string for user modules, or a resolved-module-path for library modules)
+;;   e.g., '(file "/abs/path") for user modules
 ;; fun-sym: the symbol name of the function
 ;; kw-dict: association list of keyword arguments
 ;; pos-args: list of positional arguments
-(struct jobsched:fun-call (mod-path fun-sym kw-dict pos-args) #:prefab)
+(struct remote-call (mod-path fun-sym kw-dict pos-args)
+  #:prefab
+  #:constructor-name make-remote-call
+  #:name jobsched:remote-call)
 
 ;; At compile time, extract the module path and symbol for an identifier,
 ;; suitable for `dynamic-require` at runtime.
@@ -26,7 +33,7 @@
     [(or (not binding) (eq? binding 'lexical))
      ;; Local or lexical binding — the function is not exported from any module.
      ;; dynamic-require won't be able to find it, so raise a compile-time error.
-     (raise-syntax-error 'job:fun-call
+     (raise-syntax-error 'remote-call
                          (format (string-append
                                   "function `~a` is not provided by any module. "
                                   "Add (provide ~a) to the module that defines it, "
@@ -65,15 +72,27 @@
                  ;; Symbolic parent — resolve via syntax-source.
                  (define src (syntax-source id))
                  (if (path? src) (path->string src)
-                     (error 'job:fun-call
+                     (error 'remote-call
                             "Cannot resolve submodule path for ~a" (syntax-e id)))]
-                [else (error 'job:fun-call
+                [else (error 'remote-call
                              "Unexpected submodule parent type: ~v" parent)]))
         (values (list* 'submod (list 'file parent-path) sub-names) nom-sym)]
        [else
         (values nom-name nom-sym)])]))
 
-(define-syntax (job:fun-call stx)
+;; Start a remote-call worker. No arguments needed — the module path
+;; is embedded in each job struct by the `remote-call` macro.
+;; Defined BEFORE the macro so that `match` can use the struct info.
+(define (start-remote-call-worker)
+  (start-simple-worker
+   (match-lambda
+     [(jobsched:remote-call mod-path fun-sym kw-dict pos-args)
+      (define proc (dynamic-require mod-path fun-sym))
+      (keyword-apply/dict proc kw-dict pos-args)]
+     [jb (error "ill-formed remote-call job" jb)])))
+
+;; The macro — shadows the struct binding for `remote-call`.
+(define-syntax (remote-call stx)
   (syntax-parse stx
     [(_ fun-call)
      #:with (fun:expr (~or* (~seq kw:keyword kw-arg:expr) arg2:expr) ...) #'fun-call
@@ -89,17 +108,7 @@
              ;; within DrRacket is at the call site, not in the macro.
              fun-call
              ;; Collect the evaluated arguments with the resolved module path.
-             (jobsched:fun-call 'mod-path-datum
-                                'fun-sym-datum
-                                (list (~? (cons 'kw kw-arg)) ...)
-                                (list (~? arg2) ...))))]))
-
-;; Start a fun-call worker. No arguments needed — the module path
-;; is embedded in each job struct by the `job:fun-call` macro.
-(define (start-fun-call-worker)
-  (start-simple-worker
-   (match-lambda
-     [(jobsched:fun-call mod-path fun-sym kw-dict pos-args)
-      (define proc (dynamic-require mod-path fun-sym))
-      (keyword-apply/dict proc kw-dict pos-args)]
-     [jb (error "ill-formed fun-call job" jb)])))
+             (make-remote-call 'mod-path-datum
+                               'fun-sym-datum
+                               (list (~? (cons 'kw kw-arg)) ...)
+                               (list (~? arg2) ...))))]))

@@ -1,5 +1,6 @@
 #lang scribble/manual
 @require[@for-label[jobsched
+                    jobsched/fun-call
                     data/heap
                     racket/contract/base
                     racket/future
@@ -31,10 +32,11 @@ The workflow is as follows:
 @itemlist[#:style 'ordered
  @item{The server (a Racket program) is started.}
  @item{@N jobs are added to the job queue in the server. A job is specified as @racket[read]-able data.}
- @item{The server starts @K workers (independent Racket programs).}
- @item{Each worker signals on their output ports
-  to the server that they are ready to receive jobs,
-           and listens to events on its input port.}
+ @item{The server starts @K workers (independent Racket programs).
+  Each worker is spawned as a separate OS process and communicates with the server
+  over a localhost TCP connection (one per worker).}
+ @item{Each worker signals to the server over TCP
+  that it is ready to receive jobs.}
  @item{As soon as a worker is ready, the server sends it one of the remaining jobs.}
  @item{When a worker has finished a job, it sends the result to the server, and waits for another job.}
  @item{When the server receives the result of a job, it processes this result and sends a new job (if any is remaining)
@@ -250,13 +252,13 @@ The bindings in this section are also exported by @racketmodname[jobsched].
 
  See example at the top.
 
- @bold{IMPORTANT:} Jobsched uses the input/output ports of the programs for communication.
- Any output @emph{before} @racket[start-worker] is called is processed by the server,
- who is waiting for a ready signal from the worker. It is advised to avoid any output before
- @racket[start-worker].
+ Communication between server and worker uses TCP on localhost.
+ The worker's stdout/stderr are redirected to the server's stderr,
+ so @racket[printf] and @racket[displayln] calls in the worker are visible
+ for debugging and do @bold{not} interfere with the protocol.
 
- Also note that @racket[run-job] must return a @racket[readable?] value, and that @racket[(void)]
- is not readable.
+ @racket[run-job] must return a @racket[readable?] value (in the sense of @racketmodname[racket/fasl]),
+ and @racket[(void)] is not readable.
 }
 
 @section[#:tag "utils"]{Utilities}
@@ -282,6 +284,85 @@ Creates a command line to call the racket program @racket[path-to-prog].
 
 @defform[(this-file)]{
  'Returns' the path-string of the enclosing file, or @racket[#f] if there is no enclosing file.}
+
+@section[#:tag "remote-call"]{Remote-Call: Remote function calls}
+
+@defmodule[jobsched/fun-call]
+
+The @racketmodname[jobsched/fun-call] module provides a higher-level interface where jobs
+are expressed as function calls.
+
+@filebox["server-worker-fun-call.rkt"
+         (codeblock
+          (file->string (build-path examples "server-worker-fun-call.rkt")))]
+
+Try it with:
+@codeblock|{racket -l- jobsched/examples/server-worker-fun-call}|
+
+The @racket[remote-call] macro captures:
+@itemlist[
+ @item{The function's @bold{module path} (resolved at compile time via @racket[identifier-binding]).}
+ @item{The function's @bold{symbol name}.}
+ @item{The evaluated @bold{arguments} (positional and keyword).}]
+
+The worker then uses @racket[dynamic-require] to resolve the function and
+applies it with the captured arguments. This means the server and worker
+are guaranteed to call the same function---eliminating the risk of module
+path mismatches.
+
+@bold{Important:} The arguments to the function are @emph{evaluated on the server} before
+being serialized and sent to the worker. The worker receives only the function name
+and the serialized argument values, and calls the function on these values.
+In particular, procedures and closures are @bold{not} serializable
+(via @racketmodname[racket/fasl]) and cannot be passed as arguments.
+Only the top-level function itself is resolved on the worker via @racket[dynamic-require].
+
+@defform[(remote-call (fun arg ...))]{
+ Creates a remote-call job for the function call @racket[(fun arg ...)].
+
+ At compile time, the macro:
+ @itemlist[
+  @item{Checks the syntax of @racket[(fun arg ...)] using @racketmodname[define2] conventions
+   (keyword presence, arity, etc.). This provides immediate feedback in DrRacket.}
+  @item{Extracts the module path and symbol for @racket[fun] via @racket[identifier-binding].}
+  @item{Raises a compile-time error if @racket[fun] is not @racket[provide]d by any module.}]
+
+ At run time, the arguments are evaluated and stored in the job data,
+ but the function is @bold{not} called---it will be called on the worker.
+
+ @bold{Caveats:}
+ @itemlist[
+  @item{The function must be @racket[provide]d by its module,
+   otherwise a compile-time error is raised.}
+  @item{All arguments must be serializable via @racketmodname[racket/fasl].
+   Procedures, closures, and other non-serializable values cannot be passed as arguments.}
+  @item{Renamed imports (e.g., @racket[(require (rename-in racket/list [first my-first]))]) are
+   @bold{not} supported. The embedded module path refers to the original name.
+   Use re-exported names instead.}
+  @item{@tt{planet} modules are untested.}]
+}
+
+The @racket[data] argument received by the @racket[#:process-result] callback is
+the remote-call value. You can inspect it with the following accessors and predicate:
+
+@defproc*[([(remote-call? [v any/c]) boolean?]
+           [(remote-call-fun-sym [rc remote-call?]) symbol?]
+           [(remote-call-pos-args [rc remote-call?]) list?]
+           [(remote-call-kw-dict [rc remote-call?]) dict?]
+           [(remote-call-mod-path [rc remote-call?]) module-path?])]{
+ @racket[remote-call?] checks whether a value is a remote-call.
+ The accessors return, respectively, the function symbol name, the list of positional arguments,
+ the association list of keyword arguments, and the resolved module path.}
+
+@defproc[(start-remote-call-worker) void?]{
+ Starts a worker that processes remote-call jobs.
+ No arguments are needed---the module path is embedded in each job
+ by the @racket[remote-call] macro.
+
+ For each received job, the worker uses @racket[dynamic-require] to load
+ the function from the embedded module path, then calls it with the
+  stored arguments.}
+
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}
 

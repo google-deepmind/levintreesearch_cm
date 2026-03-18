@@ -2,20 +2,20 @@
 (require jobsched jobsched/fun-call
          rackunit)
 
-;;; This test verifies that job:fun-call correctly embeds the module path,
-;;; so start-fun-call-worker resolves the right function automatically.
+;;; This test verifies that remote-call correctly embeds the module path,
+;;; so start-remote-call-worker resolves the right function automatically.
 
 (provide f)
 
 (define (f x) (list 'f-result x))
 
 (module+ worker
-  (start-fun-call-worker))
+  (start-remote-call-worker))
 
 (module+ test
-  (define data (list (job:fun-call (f 'a))
-                     (job:fun-call (f 'b))
-                     (job:fun-call (f 'c))))
+  (define data (list (remote-call (f 'a))
+                     (remote-call (f 'b))
+                     (remote-call (f 'c))))
   (define results '())
 
   (start-simple-server #:worker-file (this-file)
