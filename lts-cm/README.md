@@ -9,7 +9,7 @@ Code for the paper "Levin Tree Search with Context Models", published in the IJC
 This code allows to reproduce the results of the paper.
 If for some reason this code doesn't work for you, please do file an issue.
 
-![The 4 domains considered in the paper: Sokoban, Sliding Tile Puzzle, The Witness, Rubik's Cube](lts-cm/img/domains.png)
+![The 4 domains considered in the paper: Sokoban, Sliding Tile Puzzle, The Witness, Rubik's Cube](https://raw.githubusercontent.com/google-deepmind/levintreesearch_cm/refs/heads/main/lts-cm/img/domains.png)
 
 ## Installation
 
