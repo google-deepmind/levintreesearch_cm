@@ -16,8 +16,10 @@ limitations under the License.|#
 (require (for-syntax racket/base syntax/parse)
          data/heap
          racket/list
+         racket/port
          racket/system
          racket/struct
+         racket/tcp
          (only-in racket/future processor-count)
          "utils.rkt"
          "job.rkt"
@@ -99,9 +101,24 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 
 ;—————————————————————————————————————————————————————————————————————————————————————————————————————
 
-(struct worker (index cmd in out err pid handler start-ms [job #:mutable] [state #:mutable])
+(struct worker (index cmd [in #:mutable] [out #:mutable] err pid handler start-ms
+                       [job #:mutable] [state #:mutable] [listener #:mutable])
   #:property prop:evt
-  (λ (self) (wrap-evt (worker-in self) (λ _ self)))
+  (λ (self)
+    (cond
+      [(worker-listener self)
+       ;; Still waiting for the worker subprocess to connect via TCP.
+       ;; tcp-accept-evt fires when the connection is ready, producing (list in out).
+       (handle-evt (tcp-accept-evt (worker-listener self))
+                   (λ (ports)
+                     (set-worker-in! self (car ports))
+                     (set-worker-out! self (cadr ports))
+                     (tcp-close (worker-listener self))
+                     (set-worker-listener! self #f)
+                     self))]
+      [else
+       ;; Connected — normal data event.
+       (wrap-evt (worker-in self) (λ _ self))]))
   #:transparent)
 
 (define-syntax-rule (define-states state ...)
@@ -117,11 +134,28 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
   state:closed)
 
 ;; Runs the command line cmd in the OS, and return the `worker`.
+;; Returns immediately — the TCP connection is accepted lazily on first sync.
 (define (start-worker name cmd)
   (define err (current-error-port))
-  (define-values (in out pid _err handler)
-    (apply values (apply process*/ports #f #f err cmd)))
-  (worker name cmd in out err pid handler (current-milliseconds) #;job: #f state:starting))
+  ;; Create a TCP listener on a random port for this worker.
+  (define listener (tcp-listen 0 1 #t "127.0.0.1"))
+  (define-values (_local-addr tcp-port _remote-addr _remote-port)
+    (tcp-addresses listener #t))
+  ;; Pass the TCP port to the worker via an environment variable.
+  ;; Each call creates an independent copy, so concurrent spawns are safe.
+  (define env (environment-variables-copy (current-environment-variables)))
+  (environment-variables-set! env #"JOBSCHED_PORT"
+                              (string->bytes/utf-8 (number->string tcp-port)))
+  ;; Spawn the subprocess.
+  ;; stdout → stderr (so worker prints are visible for debugging, not lost).
+  ;; stdin  → empty (not used; communication goes over TCP).
+  (define-values (proc-in proc-out pid _err handler)
+    (parameterize ([current-environment-variables env])
+      (apply values (apply process*/ports err (open-input-string "") err cmd))))
+  ;; Return immediately. The TCP connection will be accepted lazily
+  ;; when the scheduler first syncs on this worker (via prop:evt / tcp-accept-evt).
+  (worker name cmd #f #f err pid handler (current-milliseconds)
+          #;job: #f state:starting #;listener: listener))
 
 (define (worker-ask-ready wk)
   (send-msg message:ask-ready (worker-out wk))
@@ -130,15 +164,24 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 (define (worker-close wk)
   (when-verb (printf "Closing worker: ~a\n" wk))
   (check-state-in wk state:ready state:starting state:ready?-sent)
-  (define in  (worker-in  wk))
   (define out (worker-out wk))
-  (send-msg message:close-worker out)
-  (set-worker-state! wk state:closing))
+  (cond
+    [out
+     ;; Connected — send close message.
+     (send-msg message:close-worker out)
+     (set-worker-state! wk state:closing)]
+    [else
+     ;; Not yet connected (TCP accept hasn't happened). Kill instead.
+     (worker-kill wk)]))
 
 (define (worker-kill wk)
   (when-verb (printf "Terminating worker: ~a\n" wk))
   ((worker-handler wk) 'kill)
   (set-worker-state! wk state:killed)
+  ;; Close TCP ports if connected, or the listener if still waiting.
+  (when (worker-listener wk)
+    (tcp-close (worker-listener wk))
+    (set-worker-listener! wk #f))
   (define in  (worker-in wk))
   (define out (worker-out wk))
   (when in  (close-input-port in))
@@ -168,10 +211,6 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
           (newline)
           (displayln "Error:")
           (println e)
-          (when (eq? 'state:starting (worker-state wk))
-            (newline)
-            (displayln "Possible cause: Data is sent to output by worker before `start-worker`.")
-            (newline))
           (raise e))])
     (receive-msg (worker-in wk))))
 
@@ -252,64 +291,77 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
       ;; Find a worker that has output a value.
       ;; The workers must start by sending out `ready-message`.
       (define wk (apply sync (get-workers)))
-      (define res (receive-worker-msg wk))
-      (define now (- (current-seconds) start-seconds))
-      (define wk-ready?
-        (cond [(eof-object? res)
-               (when-verb (printf "time: ~a; NOTICE: Worker ~a terminated. Starting a new one.\n"
-                                  now (worker-index wk)))
-               (worker-kill wk)
-               ;; push the job back into the queue (should we make a child node instead?)
-               (define jb (worker-job wk))
-               (when jb
-                 (+=n-active-jobs -1)
-                 (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
-               ;; Remove the worker and add a new one.
-               (set-workers! (remove wk (get-workers)))
-               (new-worker!)
-               #false]
 
-              [(eq? res message:ready)
-               (when-verb (printf "time: ~a; WORKER READY\n" now))
-               (check-state-in wk state:ready?-sent state:starting)
-               (set-worker-state! wk state:ready)
-               #true]
+      ;; The sync may fire because:
+      ;; (a) A TCP connection was just accepted (tcp-accept-evt in prop:evt).
+      ;;     The handle-evt callback sets in/out and clears listener.
+      ;;     No data is available yet — re-loop to wait for actual data.
+      ;; (b) Data is available on the TCP port (normal operation).
+      ;; We distinguish by checking if out is set (it's #f before first accept).
+      (cond
+        [(not (worker-out wk))
+         ;; TCP accept just happened. The handle-evt already set the ports.
+         ;; But this shouldn't happen since handle-evt sets out. Check for safety.
+         (server-loop)]
+        [else
+         (define res (receive-worker-msg wk))
+         (define now (- (current-seconds) start-seconds))
+         (define wk-ready?
+           (cond [(eof-object? res)
+                  (when-verb (printf "time: ~a; NOTICE: Worker ~a terminated. Starting a new one.\n"
+                                     now (worker-index wk)))
+                  (worker-kill wk)
+                  ;; push the job back into the queue (should we make a child node instead?)
+                  (define jb (worker-job wk))
+                  (when jb
+                    (+=n-active-jobs -1)
+                    (scheduler-add-job! sched #:data (job-data jb) #:cost (job-cost jb)))
+                  ;; Remove the worker and add a new one.
+                  (set-workers! (remove wk (get-workers)))
+                  (new-worker!)
+                  #false]
 
-              [(worker-job wk)
-               (check-state-in wk state:running)
-               ; Processing job result
-               (+=n-active-jobs -1)
-               (define jb (worker-job wk))
-               (set-job-stop-ms! jb (current-milliseconds))
-               (when-verb
-                (printf (string-append
-                         "time: ~as; worker: ~a; job: ~a stopped; cost: ~a; took: ~ams\n")
-                        now (worker-index wk) (job-index jb)  (job-cost jb)
-                        (- (job-stop-ms jb) (job-start-ms jb))))
-               (after-stop sched jb res) ; callback
-               (set-worker-job! wk #f)
-               (set-worker-state! wk state:ready)
-               #true]
+                 [(eq? res message:ready)
+                  (when-verb (printf "time: ~a; WORKER READY\n" now))
+                  (check-state-in wk state:ready?-sent state:starting)
+                  (set-worker-state! wk state:ready)
+                  #true]
 
-              [else
-               ;; A worker has sent a message, but the job is #f. This means that a worker sends a
-               ;; message before `start-worker` is able to deal with the worker's outputs.
-               (raise-argument-error 'scheduler-start "A worker message" res)]))
+                 [(worker-job wk)
+                  (check-state-in wk state:running)
+                  ; Processing job result
+                  (+=n-active-jobs -1)
+                  (define jb (worker-job wk))
+                  (set-job-stop-ms! jb (current-milliseconds))
+                  (when-verb
+                   (printf (string-append
+                            "time: ~as; worker: ~a; job: ~a stopped; cost: ~a; took: ~ams\n")
+                           now (worker-index wk) (job-index jb)  (job-cost jb)
+                           (- (job-stop-ms jb) (job-start-ms jb))))
+                  (after-stop sched jb res) ; callback
+                  (set-worker-job! wk #f)
+                  (set-worker-state! wk state:ready)
+                  #true]
 
-      ;; Send a new job to the worker if it is ready
-      (when wk-ready?
-        (check-state-in wk state:ready)
-        (define jb (scheduler-extract-min! sched))
-        (when jb
-          ;; Give a chance to modify the data in the node, and maybe add sibling nodes
-          (before-start sched jb) ; callback
-          (set-worker-job! wk jb)
-          (+=n-active-jobs 1)
-          (set-job-start-ms! jb (current-milliseconds))
-          (set-worker-state! wk state:running)
-          (send-msg (struct->list jb) (worker-out wk))))
+                 [else
+                  ;; A worker has sent a message, but the job is #f. This means that a worker sends a
+                  ;; message before `start-worker` is able to deal with the worker's outputs.
+                  (raise-argument-error 'scheduler-start "A worker message" res)]))
 
-      (server-loop)))
+         ;; Send a new job to the worker if it is ready
+         (when wk-ready?
+           (check-state-in wk state:ready)
+           (define jb (scheduler-extract-min! sched))
+           (when jb
+             ;; Give a chance to modify the data in the node, and maybe add sibling nodes
+             (before-start sched jb) ; callback
+             (set-worker-job! wk jb)
+             (+=n-active-jobs 1)
+             (set-job-start-ms! jb (current-milliseconds))
+             (set-worker-state! wk state:running)
+             (send-msg (struct->list jb) (worker-out wk))))
+
+         (server-loop)])))
 
   (with-handlers ([exn? (λ (e)
                           (sleep .5) ; for better display formatting

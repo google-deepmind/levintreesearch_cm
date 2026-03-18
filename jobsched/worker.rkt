@@ -15,6 +15,7 @@ limitations under the License.|#
 
 (require racket/contract
          racket/port
+         racket/tcp
          "utils.rkt"
          "job.rkt"
          define2)
@@ -23,30 +24,38 @@ limitations under the License.|#
  (contract-out
   [start-worker
    (->* [(procedure-arity-includes/c 1)]
-        (#:silent? any/c)
+        [#:silent? any/c]
         any)]
   [start-simple-worker
    (->* [(procedure-arity-includes/c 1)]
-        (#:silent? any/c)
+        [#:silent? any/c]
         any)]))
 
 ;; run-job : job? -> any/c
 ;; The result of `start-worker` must be writeable and readable.
 (define (start-worker run-job #:? [silent? #f])
-  (send-msg message:ready) ; This is important
+  (define tcp-port-str (getenv "JOBSCHED_PORT"))
+  (unless tcp-port-str
+    (error 'start-worker
+           "Missing JOBSCHED_PORT environment variable. Workers must be spawned by the jobsched server."))
+  (define tcp-port (string->number tcp-port-str))
+  (define-values (tcp-in tcp-out) (tcp-connect "127.0.0.1" tcp-port))
+
+  (send-msg message:ready tcp-out) ; This is important
 
   (let loop ()
-    ;; If it's more than a few ms, something's wrong (IO on the server side?)
-    (define msg (receive-msg))
+    (define msg (receive-msg tcp-in))
     (cond
       [(eof-object? msg)
        ;; Terminate the worker.
        (void)]
       [(eq? msg message:close-worker)
        ;; Exit gracefully.
+       (close-output-port tcp-out)
+       (close-input-port tcp-in)
        (void)]
       [(eq? msg message:ask-ready)
-       (send-msg message:ready)
+       (send-msg message:ready tcp-out)
        (loop)]
       [else
        (define jb (apply job msg))
@@ -57,17 +66,18 @@ limitations under the License.|#
        (define cust (make-custodian))
        (define res
          (parameterize ([current-custodian cust]
-                        ;; The output port is used for communication with the server,
-                        ;; and must thus be reserved for that, so we temporarily redirect the
-                        ;; output port to the error port.
+                        ;; When silent, redirect output to nowhere.
+                        ;; Otherwise, leave output alone — it goes to the subprocess's
+                        ;; stdout/stderr and doesn't interfere with the TCP protocol.
                         [current-output-port (if silent?
                                                  (open-output-nowhere)
-                                                 (current-error-port))])
+                                                 (current-output-port))])
            (run-job jb)))
        (custodian-shutdown-all cust)
 
-       (send-msg res)
+       (send-msg res tcp-out)
        (loop)])))
 
 (define (start-simple-worker run #:? [silent? #f])
   (start-worker (λ (jb) (run (job-data jb))) #:silent? silent?))
+
