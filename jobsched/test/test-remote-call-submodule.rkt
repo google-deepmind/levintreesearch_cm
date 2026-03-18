@@ -1,7 +1,7 @@
 #lang racket/base
 ;;; Test that remote-call works with functions from submodules.
 
-(require jobsched jobsched/fun-call)
+(require jobsched)
 
 (module helpers racket/base
   (provide helper-add)

@@ -1,5 +1,5 @@
 #lang racket
-(require jobsched jobsched/fun-call
+(require jobsched
          rackunit)
 
 ;;; This test verifies that remote-call correctly embeds the module path,

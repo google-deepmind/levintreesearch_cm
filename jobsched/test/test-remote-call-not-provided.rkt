@@ -13,7 +13,7 @@
    #rx"not provided by any module"
    (λ ()
      (eval '(begin
-              (require jobsched/fun-call)
+              (require jobsched/remote-call)
               (define (not-provided x) x)
               (remote-call (not-provided 42)))
            (make-base-namespace)))))

@@ -2,7 +2,7 @@
 ;;; Test that remote-call correctly resolves library functions and primitives.
 ;;; Uses #lang racket/base so the worker submodule does NOT have racket/list.
 
-(require jobsched jobsched/fun-call)
+(require jobsched)
 
 (module+ worker
   ;; Only has racket/base — no racket/list.

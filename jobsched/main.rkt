@@ -16,9 +16,11 @@ limitations under the License.|#
 (require "server.rkt"
          "job.rkt"
          "worker.rkt"
-         "utils.rkt")
+         "utils.rkt"
+         "remote-call.rkt")
 
 (provide (all-from-out "server.rkt"
                        "job.rkt"
                        "worker.rkt"
-                       "utils.rkt"))
+                       "utils.rkt"
+                       "remote-call.rkt"))
