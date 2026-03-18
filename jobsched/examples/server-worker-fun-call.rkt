@@ -13,8 +13,9 @@
 (define (bar argh)
   (list argh))
 
-;; The worker automatically calls the relevant functions. This is just boilerplate.
-(module+ worker (start-fun-call-worker (this-file))) ; tells where to find the functions
+;; The worker automatically calls the relevant functions. No argument needed —
+;; the module path is embedded in each job struct by job:fun-call.
+(module+ worker (start-fun-call-worker))
 
 (module+ main
   (define n-workers 3)
