@@ -13,12 +13,15 @@
   (require rackunit)
   (define data '(a b c))
   (define results '())
+  (define err-out (open-output-string))
   ;; This should now succeed — early output no longer breaks the server.
-  (start-simple-server #:worker-file (this-file)
-                       #:data-list data
-                       #:n-workers 2
-                       #:process-result
-                       (λ (data result)
-                         (set! results (cons result results))))
+  (parameterize ([current-error-port err-out])
+    (start-simple-server #:worker-file (this-file)
+                         #:data-list data
+                         #:n-workers 2
+                         #:process-result
+                         (λ (data result)
+                           (set! results (cons result results)))))
   (check-equal? (sort results string<? #:key ~a)
-                (sort (map (λ (x) (list 'result x)) data) string<? #:key ~a)))
+                (sort (map (λ (x) (list 'result x)) data) string<? #:key ~a))
+  (check-true (regexp-match? #rx"early output" (get-output-string err-out))))
