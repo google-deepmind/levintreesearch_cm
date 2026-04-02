@@ -160,7 +160,8 @@ Note that @racket[start-simple-worker] can be used with @racket[start-simple-ser
                               [#:data-list data-list (listof readable?)]
                               [#:process-result process-result (procedure-arity-includes/c 2)]
                               [#:submod-name submod-name symbol? 'worker]
-                              [#:n-workers n-workers integer? (min (length data-list) (processor-count))])
+                              [#:n-workers n-workers integer? (min (length data-list) (processor-count))]
+                              [#:on-OOM on-OOM (-> scheduler? any) void])
          void?]{
 
  Creates and starts a server, like @racket[scheduler-start], but hiding the scheduler and the job
@@ -207,7 +208,8 @@ Try the following example with:
                        [#:data-list data-list (listof readable?)]
                        [#:process-result process-result (procedure-arity-includes/c 2)]
                        [#:n-workers n-workers integer? (min (length data-list) (processor-count))]
-                       [#:close-workers? close-workers? any/c #false])
+                       [#:close-workers? close-workers? any/c #false]
+                       [#:on-OOM on-OOM (-> scheduler? any) void])
          void?]{
  Starts an existing scheduler (likely made with @racket[make-server]).
  See @racket[start-simple-server].
@@ -216,7 +218,16 @@ Try the following example with:
 }
 
 @defproc[(server-close [sched scheduler?]) void?]{
- If all workers of @racket[sched] to exit gracefully, and blocks until all workers have exited.
+ Asks all workers of @racket[sched] to exit gracefully, and blocks until all workers have exited.
+}
+
+@defproc[(server-force-close [sched scheduler?]) void?]{
+ Terminates all workers of @racket[sched] immediately by sending a kill signal to their OS processes.
+}
+
+@defproc[(kill-server-on-OOM [sched scheduler?]) void?]{
+ An OOM handler that prints an error message to @racket[current-error-port], terminates all workers via @racket[server-force-close], and terminates the server process via @racket[(exit)].
+ Useful for passing to @racket[#:on-OOM].
 }
 
 @section{Job}
@@ -280,7 +291,8 @@ Returns the number of jobs that have started and not yet finished.}
                           [n-workers (or/c #f exact-nonnegative-integer?) #f]
                           [#:before-start before-start (-> scheduler? job? any) void]
                           [#:after-stop after-stop (-> scheduler? job? readable? any) void]
-                          [#:close-workers? close-workers? any/c #t])
+                          [#:close-workers? close-workers? any/c #t]
+                          [#:on-OOM on-OOM (-> scheduler? any) void])
          void?]{
 Starts a scheduler,
 making sure that @racket[n-workers] racket worker instances are running on the same machine.
@@ -299,6 +311,10 @@ The callback @racket[before-start] is called before a job is sent to a worker.
 The callback @racket[after-stop] is called when a job is finished and the result is received
 from the worker.
 Both callbacks can be used to add new jobs to the queue, using @racket[scheduler-add-job!].
+
+If @racket[on-OOM] is not @racket[void], a memory guard thread is started (Linux only) which monitors system memory.
+If system memory is low, it calls @racket[(on-OOM sched)].
+A useful handler is @racket[kill-server-on-OOM] which prints an error, kills workers, and exits.
 
 See an example of using @racket[scheduler-start] in @tt{examples/server-worker}.
 }
@@ -353,6 +369,23 @@ Creates a command line to call the racket program @racket[path-to-prog].
 
 @defform[(this-file)]{
  'Returns' the path-string of the enclosing file, or @racket[#f] if there is no enclosing file.}
+
+
+@defproc[(start-memory-guard-thread [#:on-OOM on-OOM (-> any) (λ () (eprintf "OUT OF MEMORY\n") (exit))]
+                                    [#:OOM-ratio OOM-ratio real? 0.05]
+                                    [#:wait-seconds wait-seconds real? 10])
+         (or/c thread? #false)]{
+ Starts a thread that monitors system memory and calls @racket[on-OOM] when available memory drops below a certain ratio.
+
+ This function is Linux-specific (it reads @filepath{/proc/meminfo}). On other platforms, it returns @racket[#false] immediately without starting a thread.
+
+ The @racket[on-OOM] callback should be a thunk. By default it prints @verbatim{OUT OF MEMORY} to stderr and exits.
+ Note that if called from a server, this default handler will @bold{not} kill worker processes! For server OOM handling, use the @racket[#:on-OOM] argument of @racket[server-start] or @racket[scheduler-start] instead, or use @racket[server-force-close] inside the callback.
+
+ The @racket[OOM-ratio] is the ratio of available memory to total memory. If available memory is less than @racket[OOM-ratio] * total memory, OOM is triggered. Default is @racket[0.05] (5%).
+
+ The query is performed every @racket[wait-seconds] seconds.
+}
 
 
 @section[#:tag "comparison"]{Comparison with other Racket parallelism mechanisms}

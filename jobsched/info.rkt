@@ -1,6 +1,7 @@
 #lang info
 (define collection "jobsched")
-(define deps '("data-lib"
+(define deps '("rackunit-lib"
+               "data-lib"
                "define2"
                "global"
                "base"

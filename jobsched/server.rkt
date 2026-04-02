@@ -35,6 +35,8 @@ limitations under the License.|#
          make-server
          server-start
          server-close
+         server-force-close
+         kill-server-on-OOM
          start-simple-server)
 
 #|
@@ -225,8 +227,14 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
 (define (scheduler-start sched [n-workers (scheduler-n-workers sched)]
                          #:before-start [before-start void]
                          #:after-stop [after-stop void]
-                         #:close-workers? [close? #true])
+                         #:close-workers? [close? #true]
+                         #:on-OOM [on-OOM void])
   (define start-seconds (current-seconds))
+
+  (define mem-thread
+    (if (eq? on-OOM void)
+        #f
+        (start-memory-guard-thread #:on-OOM (λ () (on-OOM sched)))))
 
   ;; Check no active job
   (unless (= 0 (scheduler-n-active-jobs sched))
@@ -370,6 +378,7 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                           (raise e))])
     (server-loop))
 
+  (when mem-thread (kill-thread mem-thread))
   (when close? (scheduler-close sched)))
 
 ;; Close all workers, close the ports, etc.
@@ -413,17 +422,27 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                       #:! data-list
                       #:! process-result
                       #:? [n-workers (scheduler-n-workers sched)]
-                      #:? [close-workers? #false])
+                      #:? [close-workers? #false]
+                      #:? [on-OOM void])
   (for ([data (in-list data-list)])
     (scheduler-add-job! sched #:data data))
   (scheduler-start sched
                    n-workers
                    #:after-stop (λ (sched jb result) (process-result (job-data jb) result))
-                   #:close-workers? close-workers?))
+                   #:close-workers? close-workers?
+                   #:on-OOM on-OOM))
 
 ;; Closes all the workers gracefully.
 (define (server-close sched)
   (scheduler-close sched))
+
+(define (server-force-close sched)
+  (scheduler-force-close sched))
+
+(define (kill-server-on-OOM sched)
+  (eprintf "OOM: Killing all workers and exiting.\n")
+  (scheduler-force-close sched)
+  (exit))
 
 ;; A simpler server that hides the scheduler and the jobs
 ;; All workers are closed on exit
@@ -434,10 +453,12 @@ watch -n 3 "cat /proc/cpuinfo  | grep MHz; sensors"
                              ;; n-proc kept for bwd compat. The default value MUST be for n-proc
                              ;; and not for n-workers.
                              #:? [n-proc (min (length data-list) (processor-count))]
-                             #:? [n-workers n-proc])
+                             #:? [n-workers n-proc]
+                             #:? [on-OOM void])
   (define sched (make-server #:worker-file worker-file #:submod-name submod-name))
   (server-start sched
                 #:data-list data-list
                 #:process-result process-result
-                #:n-workers n-workers)
+                #:n-workers n-workers
+                #:on-OOM on-OOM)
   (server-close sched))

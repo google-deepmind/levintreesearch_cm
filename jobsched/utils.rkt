@@ -16,7 +16,10 @@ limitations under the License.|#
 (require (for-syntax racket/base syntax/parse)
          global
          racket/fasl
+         racket/file
+         racket/match
          racket/path
+         racket/string
          syntax/location
          define2)
 
@@ -92,3 +95,29 @@ limitations under the License.|#
   (if (port-closed? in)
       eof
       (fasl->s-exp in #:datum-intern? #false)))
+
+
+;; Monitors memory usage every wait-seconds.
+;; When at most OOM-ratio memory remains, call on-OOM (which defaults to exiting immediately).
+;; May not kill child processes instantly if called from a server.
+;; Linux-specific (reads /proc/meminfo).
+(define (start-memory-guard-thread #:? [on-OOM (λ ()
+                                                 (eprintf "OUT OF MEMORY")
+                                                 (exit))]
+                                   #:? [OOM-ratio 0.05]
+                                   #:? [wait-seconds 10]) ; wait between each query
+  (and (file-exists? "/proc/meminfo") ; unix/linux only
+       (thread
+        (λ ()
+          (let loop ()
+            (sleep wait-seconds) ; every 10 seconds
+            (match (string-split (file->string "/proc/meminfo"))
+              [(list-rest "MemTotal:" totalkB "kB"
+                          "MemFree:" freekB "kB"
+                          "MemAvailable:" availkB "kB"
+                          _rst)
+               (when (< (string->number availkB) (* OOM-ratio (string->number totalkB)))
+                 (on-OOM))]
+              [else
+               (eprintf "Warning: cannot read or parse /proc/meminfo")])
+            (loop))))))
