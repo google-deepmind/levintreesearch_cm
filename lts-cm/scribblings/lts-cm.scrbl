@@ -499,8 +499,8 @@ Like @racket[convex-line-search] but the argument @racket[c] controls how close 
  instead of @racket[/].
 
 
-The argument @racket[jac^2], if provided, should be the squared 2-norm of the jacobian (aka the
- gradient or derivative) at @racket[xleft]. This information may be used to speed up the search.
+The argument @racket[jac^2], if provided, should be the squared 2-norm of the jacobian (or rather the
+ gradient) at @racket[xleft]. This information may be used to speed up the search.
 
  See @racket[convex-line-search] for the description of the returned dictionary, and of the other
  arguments.
