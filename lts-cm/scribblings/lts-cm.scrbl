@@ -488,7 +488,10 @@ The argument @racket[callback] can be used to monitor the progress of the line s
 Like @racket[convex-line-search] but the argument @racket[c] controls how close to the minimum
  the returned value @racket[ylow] (within the returned dictionary) should be compared to the initial
  value @racketid[yleft]; more precisely, we have
- @racketid[ylow] - y* ≤ (@racketid[yleft] - @racketid[ylow]) / @racketid[c].
+ @racketid[ylow] - y* ≤ (@racketid[yleft] - y*) / (@racketid[c]+1).
+ Hence, with @racket[c]=1, @racket[quasi-exact-line-search] returns a point
+ (@racketid[xlow], @racketid[ylow]) that shrinks the
+ gap with the minimum by a factor 1/2 compared to @racketid[yleft].
 
  Moreover, by contrast to @racket[convex-line-search],
  if the minimum is found to be at @racketid[xright], the range  [@racketid[xleft], @racketid[xright]]
